@@ -48,7 +48,7 @@ fi
 
 # run patch
 echo "Patching files..."
-patch -s -d $QPBO_SOURCE_FOLDER -p1 < $PATCH_FOLDER$QPBO_PATCH_NAME -N -r -
+patch -s -d $QPBO_SOURCE_FOLDER -p1 < $PATCH_FOLDER$QPBO_PATCH_NAME -N -l -r  -
 if [ "$?" = "0" ]
 then 
     echo "Patching files done"
