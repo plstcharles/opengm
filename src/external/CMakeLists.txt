@@ -1,43 +1,57 @@
 add_subdirectory(patches)
 
+MACRO(PREPEND_PATH OLD_LIST_NAME VPATH NEW_LIST_NAME)
+    SET(${NEW_LIST_NAME} "")
+    FOREACH(VAL ${${OLD_LIST_NAME}})
+        LIST(APPEND ${NEW_LIST_NAME} "${VPATH}/${VAL}")
+    ENDFOREACH(VAL)
+ENDMACRO(PREPEND_PATH)
+
+MACRO(CHECK_EXIST PREFIX SRC_LIST_NAME INCL_LIST_NAME FOLDER_PATH)
+    SET(${PREFIX}_FILES_EXIST 1)
+    PREPEND_PATH(${SRC_LIST_NAME} ${FOLDER_PATH} ${PREFIX}_SRC_FILES)
+    FOREACH(f ${${PREFIX}_SRC_FILES})
+        IF(NOT EXISTS ${f})
+            MESSAGE(WARNING "${f}")
+            UNSET(${PREFIX}_FILES_EXIST)
+        ENDIF(NOT EXISTS ${f})
+    ENDFOREACH(f)
+    PREPEND_PATH(${INCL_LIST_NAME} ${FOLDER_PATH} ${PREFIX}_INCL_FILES)
+    FOREACH(f ${${PREFIX}_INCL_FILES})
+        IF(NOT EXISTS ${f})
+            UNSET(${PREFIX}_FILES_EXIST)
+        ENDIF(NOT EXISTS ${f})
+    ENDFOREACH(f)
+ENDMACRO(CHECK_EXIST)
+
+MACRO(CREATE_EXT_LIBS PREFIX SRC_FILES_LIST_NAME INCL_FILES_LIST_NAME)
+    STRING(TOLOWER ${PREFIX} PREFIX_SMALL)
+    ADD_LIBRARY(external-library-${PREFIX_SMALL} ${${SRC_FILES_LIST_NAME}})
+    ADD_LIBRARY(external-library-${PREFIX_SMALL}-shared SHARED ${${SRC_FILES_LIST_NAME}})
+    FILE(COPY ${${INCL_FILES_LIST_NAME}} DESTINATION "${CMAKE_BINARY_DIR}/include/opengm/inference/external/${PREFIX_SMALL}/")
+    IF(INSTALL_EXTERNAL_LIB)
+        LIST(APPEND EXTERNAL_LIB_SRC_FILES ${${SRC_FILES_LIST_NAME}})
+    ENDIF(INSTALL_EXTERNAL_LIB)
+ENDMACRO(CREATE_EXT_LIBS)
+
 IF(INSTALL_EXTERNAL_LIB)
     SET(EXTERNAL_LIB_SRC_FILES "")
 ENDIF(INSTALL_EXTERNAL_LIB)
 
 IF(WITH_QPBO)
-    SET(QPBO_FILES_EXIST 1)
-    SET(QPBO_SRC_FILES
-        ${QPBO_PATCHEDSRCDIR}/QPBO_extra.cpp
-        ${QPBO_PATCHEDSRCDIR}/QPBO.cpp
-        ${QPBO_PATCHEDSRCDIR}/QPBO_maxflow.cpp
-        ${QPBO_PATCHEDSRCDIR}/QPBO_postprocessing.cpp
+    SET(QPBO_SRC_LIST
+        QPBO_extra.cpp
+        QPBO.cpp
+        QPBO_maxflow.cpp
+        QPBO_postprocessing.cpp
     )
-    FOREACH(f ${QPBO_SRC_FILES})
-        IF(NOT EXISTS ${f})
-            UNSET(QPBO_FILES_EXIST)
-        ENDIF(NOT EXISTS ${f})
-    ENDFOREACH(f)
-    SET(QPBO_INCL_FILES
-        ${QPBO_PATCHEDSRCDIR}/block.h
-        ${QPBO_PATCHEDSRCDIR}/QPBO.h
+    SET(QPBO_INCL_LIST
+        block.h
+        QPBO.h
     )
-    FOREACH(f ${QPBO_INCL_FILES})
-        IF(NOT EXISTS ${f})
-            UNSET(QPBO_FILES_EXIST)
-        ENDIF(NOT EXISTS ${f})
-    ENDFOREACH(f)
+    CHECK_EXIST(QPBO QPBO_SRC_LIST QPBO_INCL_LIST ${QPBO_PATCHEDSRCDIR})
     IF(DEFINED QPBO_FILES_EXIST)
-        ADD_LIBRARY(external-library-qpbo ${QPBO_SRC_FILES})
-        ADD_LIBRARY(external-library-qpbo-shared SHARED ${QPBO_SRC_FILES})
-        FILE(
-            COPY
-                ${QPBO_INCL_FILES}
-            DESTINATION
-                "${CMAKE_BINARY_DIR}/include/opengm/inference/external/qpbo/"
-        )
-        IF(INSTALL_EXTERNAL_LIB)
-            LIST(APPEND EXTERNAL_LIB_SRC_FILES ${QPBO_SRC_FILES})
-        ENDIF(INSTALL_EXTERNAL_LIB)
+        CREATE_EXT_LIBS(QPBO QPBO_SRC_FILES QPBO_INCL_FILES)
     ELSE(DEFINED QPBO_FILES_EXIST)
         MESSAGE("QPBO not installed, run make externalLibs first and configure again")
     ENDIF(DEFINED QPBO_FILES_EXIST)
@@ -180,28 +194,24 @@ IF(WITH_MRF)
 ENDIF()
 
 IF(WITH_FASTPD)
-    SET(FASTPD_SRC_FILES
-        ${FASTPD_PATCHEDSRCDIR}/graph.cpp
-        ${FASTPD_PATCHEDSRCDIR}/LinkedBlockList.cpp
-        ${FASTPD_PATCHEDSRCDIR}/maxflow.cpp
+    SET(FASTPD_SRC_LIST
+        graph.cpp
+        LinkedBlockList.cpp
+        maxflow.cpp
     )
-    SET(FASTPD_SRC_FILES_EXIST 1)
-    FOREACH(f ${FASTPD_SRC_FILES})
-        IF(NOT EXISTS ${f})
-            UNSET(FASTPD_SRC_FILES_EXIST)
-        ENDIF(NOT EXISTS ${f})
-    ENDFOREACH(f)
-
-    IF(DEFINED FASTPD_SRC_FILES_EXIST)
-      ADD_LIBRARY(external-library-fastpd
-                  ${FASTPD_SRC_FILES}
-      )
-      ADD_LIBRARY(external-library-fastpd-shared SHARED
-                  ${FASTPD_SRC_FILES}
-      )
-    ELSE(DEFINED FASTPD_SRC_FILES_EXIST)
-        MESSAGE ("FASTPD not installed, run make externalLibs first and configure again")
-    ENDIF(DEFINED FASTPD_SRC_FILES_EXIST)
+    SET(FASTPD_INCL_LIST
+        block.h
+        common.h
+        Fast_PD.h
+        graph.h
+        LinkedBlockList.h
+    )
+    CHECK_EXIST(FASTPD FASTPD_SRC_LIST FASTPD_INCL_LIST ${FASTPD_PATCHEDSRCDIR})
+    IF(DEFINED FASTPD_FILES_EXIST)
+        CREATE_EXT_LIBS(FASTPD FASTPD_SRC_FILES FASTPD_INCL_FILES)
+    ELSE(DEFINED FASTPD_FILES_EXIST)
+        MESSAGE("FASTPD not installed, run make externalLibs first and configure again")
+    ENDIF(DEFINED FASTPD_FILES_EXIST)
 ENDIF()
 
 IF(WITH_GRANTE)
@@ -548,11 +558,18 @@ if(WITH_BLOSSOM5)
 
   ADD_LIBRARY(opengm-external-blossom5   ${BLOSSOM5_SRC_FILES})
   ADD_LIBRARY(opengm-external-blossom5-shared   SHARED ${BLOSSOM5_SRC_FILES} )
+  FILE(
+      COPY
+          ${BLOSSOM5_INCL_FILES}
+      DESTINATION
+          "${CMAKE_BINARY_DIR}/include/opengm/inference/external/blossom5/"
+  )
 
 endif(WITH_BLOSSOM5)
 
 IF(INSTALL_EXTERNAL_LIB AND EXTERNAL_LIB_SRC_FILES)
     ADD_LIBRARY(opengm-external ${EXTERNAL_LIB_SRC_FILES})
+    set_property(TARGET opengm-external PROPERTY POSITION_INDEPENDENT_CODE ON)
     ADD_LIBRARY(opengm-external-shared SHARED ${EXTERNAL_LIB_SRC_FILES})
     INSTALL(TARGETS opengm-external opengm-external-shared
         RUNTIME DESTINATION bin
