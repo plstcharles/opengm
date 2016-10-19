@@ -1,6 +1,6 @@
 diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
---- FastPD_DemoVersion/block.h	2003-08-12 00:32:42.000000000 +0200
-+++ FastPD.src-patched/block.h	2013-04-29 10:28:13.000000000 +0200
+--- FastPD_DemoVersion/block.h	2003-08-12 00:32:42.000000000 -0400
++++ FastPD.src-patched/block.h	2016-10-18 20:18:03.030080133 -0400
 @@ -89,8 +89,8 @@
  	deallocated only when the destructor is called.
  */
@@ -61,8 +61,8 @@ diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
  #endif
  
 diff -u -r -N FastPD_DemoVersion/common.h FastPD.src-patched/common.h
---- FastPD_DemoVersion/common.h	2007-08-17 00:11:30.000000000 +0200
-+++ FastPD.src-patched/common.h	2013-04-29 10:28:13.000000000 +0200
+--- FastPD_DemoVersion/common.h	2007-08-17 00:11:30.000000000 -0400
++++ FastPD.src-patched/common.h	2016-10-18 20:18:03.030080133 -0400
 @@ -1,6 +1,10 @@
 -#ifndef _COMMON_H_
 -#define _COMMON_H_
@@ -77,8 +77,8 @@ diff -u -r -N FastPD_DemoVersion/common.h FastPD.src-patched/common.h
 +
  #endif
 diff -u -r -N FastPD_DemoVersion/Fast_PD.cpp FastPD.src-patched/Fast_PD.cpp
---- FastPD_DemoVersion/Fast_PD.cpp	2009-01-14 13:50:32.000000000 +0100
-+++ FastPD.src-patched/Fast_PD.cpp	2013-04-29 10:28:13.000000000 +0200
+--- FastPD_DemoVersion/Fast_PD.cpp	2009-01-14 13:50:32.000000000 -0500
++++ FastPD.src-patched/Fast_PD.cpp	2016-10-18 20:18:03.030080133 -0400
 @@ -3,6 +3,8 @@
  #include <stdio.h>
  #include "Fast_PD.h"
@@ -89,20 +89,32 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.cpp FastPD.src-patched/Fast_PD.cpp
  
  /*
 diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
---- FastPD_DemoVersion/Fast_PD.h	2009-02-24 16:10:46.000000000 +0100
-+++ FastPD.src-patched/Fast_PD.h	2013-04-29 10:28:13.000000000 +0200
-@@ -16,6 +16,10 @@
- #include "graph.h"
- #include "common.h"
- 
+--- FastPD_DemoVersion/Fast_PD.h	2009-02-24 16:10:46.000000000 -0500
++++ FastPD.src-patched/Fast_PD.h	2016-10-18 20:52:49.418682546 -0400
+@@ -13,8 +13,20 @@
+ #include <assert.h>
+ #include <time.h>
+ #include <string.h>
+-#include "graph.h"
+-#include "common.h"
++#include "opengm/inference/external/fastpd/graph.h"
++#include "opengm/inference/external/fastpd/common.h"
++
 +#include <inttypes.h>
 +
-+namespace fastPDLib {
++#ifndef MIN
++#define MIN(a,b) ((a)>(b)?(b):(a))
++#endif
 +
++#ifndef MAX
++#define MAX(a,b) ((a)<(b)?(b):(a))
++#endif
++
++namespace fastPDLib {
+ 
  #define DIST(l0,l1)   (_dist[l1*_numlabels+l0])
  #define UPDATE_BALANCE_VAR0(y,d,h0,h1) { (y)+=(d); (h0)+=(d); (h1)-=d; }
- #define NEW_LABEL(n) ((n)->parent && !((n)->is_sink))
-@@ -538,7 +542,7 @@
+@@ -538,7 +550,7 @@
  					if ( _nodes[i].tr_cap )
  					{
  						//assert(  _nodes[i].tr_cap < 0 );
@@ -111,7 +123,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  						_nodes[i].is_sink = 1;
  						_nodes[i].DIST = 1;
  					}
-@@ -653,7 +657,7 @@
+@@ -653,7 +665,7 @@
  				if ( nd->tr_cap > 0 )
  				{
  					nd -> is_sink = 0;
@@ -120,7 +132,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  
  					_graph->set_active(nd);
-@@ -664,7 +668,7 @@
+@@ -664,7 +676,7 @@
  				else if (nd->tr_cap < 0)
  				{
  					nd -> is_sink = 1;
@@ -129,7 +141,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  				}
  				else nd -> parent = NULL;
-@@ -679,7 +683,7 @@
+@@ -679,7 +691,7 @@
  				if ( nd->tr_cap > 0 )
  				{
  					nd -> is_sink = 0;
@@ -138,7 +150,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  
  					_graph->set_active(nd);
-@@ -690,7 +694,7 @@
+@@ -690,7 +702,7 @@
  				else if (nd->tr_cap < 0)
  				{
  					nd -> is_sink = 1;
@@ -147,7 +159,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  				}
  				else nd -> parent = NULL;
-@@ -712,7 +716,7 @@
+@@ -712,7 +724,7 @@
  			for( i = source_nodes_start1; i >= 0; )
  			{
  				Graph::node *n = &_nodes[i];
@@ -156,7 +168,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  				{
  					Node_info *pinfo = &_pinfo[i];
  
-@@ -779,7 +783,7 @@
+@@ -779,7 +791,7 @@
  			for( i = 0; i < num_children; i++ )
  			{
  				Graph::node *n = _children[i];
@@ -165,16 +177,19 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  				Node_info *pinfo = &_pinfo[id];
  
  				// If necessary, repair "loads" in case of non-metric
-@@ -945,7 +949,7 @@
- 		double MAX( double a, double b ) { return ( a >= b ? a : b ); }
- 		double MIN( double a, double b ) { return ( a <= b ? a : b ); }
+@@ -942,10 +954,7 @@
+ 			}
+ 		}
  
+-		double MAX( double a, double b ) { return ( a >= b ? a : b ); }
+-		double MIN( double a, double b ) { return ( a <= b ? a : b ); }
+-
 -		static void err_fun(char * msg)
 +		static void err_fun(const char * msg)
  		{
  			printf("%s",msg);
  		}
-@@ -1009,6 +1013,8 @@
+@@ -1009,6 +1018,8 @@
          CV_Fast_PD operator=( const CV_Fast_PD &other );
  };
  
@@ -184,11 +199,14 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  
  //#############################################################################
 diff -u -r -N FastPD_DemoVersion/graph.cpp FastPD.src-patched/graph.cpp
---- FastPD_DemoVersion/graph.cpp	2007-08-20 18:03:30.000000000 +0200
-+++ FastPD.src-patched/graph.cpp	2013-04-29 10:28:13.000000000 +0200
-@@ -4,7 +4,9 @@
+--- FastPD_DemoVersion/graph.cpp	2007-08-20 18:03:30.000000000 -0400
++++ FastPD.src-patched/graph.cpp	2016-10-18 20:18:03.034079993 -0400
+@@ -2,9 +2,11 @@
+ /* Vladimir Kolmogorov (vnk@cs.cornell.edu), 2001. */
+ 
  #include <stdio.h>
- #include "graph.h"
+-#include "graph.h"
++#include "opengm/inference/external/fastpd/graph.h"
  
 -Graph::Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(char *))
 +using namespace fastPDLib;
@@ -198,8 +216,8 @@ diff -u -r -N FastPD_DemoVersion/graph.cpp FastPD.src-patched/graph.cpp
  	error_function = err_function;
  	_nodes = nodes;
 diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
---- FastPD_DemoVersion/graph.h	2009-02-24 16:10:08.000000000 +0100
-+++ FastPD.src-patched/graph.h	2013-04-30 11:40:23.000000000 +0200
+--- FastPD_DemoVersion/graph.h	2009-02-24 16:10:08.000000000 -0500
++++ FastPD.src-patched/graph.h	2016-10-18 20:18:03.034079993 -0400
 @@ -74,37 +74,42 @@
  	///////////////////////////////////////////////////
  */
@@ -209,11 +227,13 @@ diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +#ifndef __FAST_PD_GRAPH_H__
 +#define __FAST_PD_GRAPH_H__
  
- #include "block.h"
- #include "common.h"
- 
-+namespace fastPDLib {
+-#include "block.h"
+-#include "common.h"
++#include "opengm/inference/external/fastpd/block.h"
++#include "opengm/inference/external/fastpd/common.h"
 +
++namespace fastPDLib {
+ 
  /*
  	Nodes, arcs and pointers to nodes are
  	added in blocks for memory and time efficiency.
@@ -305,16 +325,16 @@ diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +
  #endif
 diff -u -r -N FastPD_DemoVersion/LinkedBlockList.cpp FastPD.src-patched/LinkedBlockList.cpp
---- FastPD_DemoVersion/LinkedBlockList.cpp	2005-07-21 09:02:30.000000000 +0200
-+++ FastPD.src-patched/LinkedBlockList.cpp	2013-04-29 10:28:13.000000000 +0200
-@@ -1,5 +1,7 @@
- #include "LinkedBlockList.h"
- 
-+using namespace fastPDLib;
+--- FastPD_DemoVersion/LinkedBlockList.cpp	2005-07-21 09:02:30.000000000 -0400
++++ FastPD.src-patched/LinkedBlockList.cpp	2016-10-18 20:18:03.034079993 -0400
+@@ -1,4 +1,6 @@
+-#include "LinkedBlockList.h"
++#include "opengm/inference/external/fastpd/LinkedBlockList.h"
 +
++using namespace fastPDLib;
+ 
  /*********************************************************************/
  
- void LinkedBlockList::addFront(ListType item) {
 @@ -58,7 +60,7 @@
  		m_head = m_head->m_next;
  		delete tmp;
@@ -325,8 +345,8 @@ diff -u -r -N FastPD_DemoVersion/LinkedBlockList.cpp FastPD.src-patched/LinkedBl
  /*********************************************************************/
  
 diff -u -r -N FastPD_DemoVersion/LinkedBlockList.h FastPD.src-patched/LinkedBlockList.h
---- FastPD_DemoVersion/LinkedBlockList.h	2005-07-21 09:02:30.000000000 +0200
-+++ FastPD.src-patched/LinkedBlockList.h	2013-04-29 10:28:13.000000000 +0200
+--- FastPD_DemoVersion/LinkedBlockList.h	2005-07-21 09:02:30.000000000 -0400
++++ FastPD.src-patched/LinkedBlockList.h	2016-10-18 20:18:03.034079993 -0400
 @@ -6,14 +6,16 @@
  // For other graphs, it should be set to the average expected number of neighbors
  // Data in linked list for the neighborhood system is allocated in blocks of size GCLL_BLOCK_SIZE 
@@ -356,17 +376,19 @@ diff -u -r -N FastPD_DemoVersion/LinkedBlockList.h FastPD.src-patched/LinkedBloc
  #endif
  
 diff -u -r -N FastPD_DemoVersion/maxflow.cpp FastPD.src-patched/maxflow.cpp
---- FastPD_DemoVersion/maxflow.cpp	2009-02-24 16:04:44.000000000 +0100
-+++ FastPD.src-patched/maxflow.cpp	2013-04-29 10:28:13.000000000 +0200
-@@ -4,6 +4,8 @@
- #include <stdio.h>
- #include "graph.h"
+--- FastPD_DemoVersion/maxflow.cpp	2009-02-24 16:04:44.000000000 -0500
++++ FastPD.src-patched/maxflow.cpp	2016-10-18 20:18:03.034079993 -0400
+@@ -2,7 +2,9 @@
+ /* Vladimir Kolmogorov (vnk@cs.cornell.edu), 2001. */
  
-+using namespace fastPDLib;
+ #include <stdio.h>
+-#include "graph.h"
++#include "opengm/inference/external/fastpd/graph.h"
 +
++using namespace fastPDLib;
+ 
  /*
  	special constants for node->parent
- */
 @@ -63,7 +65,7 @@
  		{
  			/* i is connected to the source */
