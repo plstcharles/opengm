@@ -7,9 +7,7 @@
 #include "opengm/inference/inference.hxx"
 #include "opengm/inference/visitors/visitors.hxx"
 #include "opengm/inference/auxiliary/lp_reparametrization.hxx"
-
-
-#include "Fast_PD.h"
+#include "opengm/inference/external/fastpd/Fast_PD.h"
 
 namespace opengm {
    namespace external {
