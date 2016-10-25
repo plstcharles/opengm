@@ -93,7 +93,7 @@ inline typename StaticSimpleDiscreteSpace<LABELS,I, L>::LabelType
 StaticSimpleDiscreteSpace<LABELS,I, L>::numberOfLabels(
    const IndexType dimension
 ) const {
-   return static_cast<L> LABELS;
+   return static_cast<L>(LABELS);
 }
 
 template<size_t LABELS,class I, class L>
