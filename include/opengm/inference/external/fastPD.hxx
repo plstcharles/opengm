@@ -37,12 +37,12 @@ namespace opengm {
 
         template<class _GM>
         struct RebindGm{
-            typedef FastPD<_GM,ACC> type;
+            typedef FastPD<_GM> type;
         };
 
         template<class _GM,class _ACC>
         struct RebindGmAndAcc{
-            typedef FastPD<_GM,_ACC> type;
+            typedef FastPD<_GM> type;
         };
 
          ///Parameter
