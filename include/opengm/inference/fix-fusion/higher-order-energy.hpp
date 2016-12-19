@@ -55,7 +55,6 @@
 
 #include <vector>
 #include <list>
-#include <boost/foreach.hpp>
 
 template <typename R, int D>
 class HigherOrderEnergy {
@@ -140,7 +139,7 @@ class HigherOrderEnergy {
 
         size_t NumTerms() const {
             size_t numTerms = 0;
-            BOOST_FOREACH(const VarRecord& vr, _varRecords)
+            for(const VarRecord& vr : _varRecords)
                 numTerms += vr._terms.size();
             return numTerms;
         }
@@ -270,7 +269,7 @@ void HigherOrderEnergy<R, D>::_ReduceNegativeTerms(QR& qr) {
     // created below, so we can count them ahead of time
     int expectedVars = _varCounter;
     int expectedEdges = 0;
-    BOOST_FOREACH(const VarRecord& vr, _varRecords) {
+    for(const VarRecord& vr : _varRecords) {
         expectedVars += vr._higherOrderTerms;
         expectedEdges += vr._quadraticTerms;
         expectedEdges += vr._sumDegrees;
@@ -282,8 +281,8 @@ void HigherOrderEnergy<R, D>::_ReduceNegativeTerms(QR& qr) {
     qr.AddNode(_varCounter);
 
     // Term-by-term reduction from Friedman & Drineas
-    BOOST_FOREACH(VarRecord& vr, _varRecords) {
-        BOOST_FOREACH(Term& t, vr._terms) {
+    for(VarRecord& vr : _varRecords) {
+        for(Term& t : vr._terms) {
             if (t.degree == 2) {
                 qr.AddPairwiseTerm(t.vars[0], t.vars[1], 0, 0, 0, t.coeff);
             } else {
@@ -296,7 +295,7 @@ void HigherOrderEnergy<R, D>::_ReduceNegativeTerms(QR& qr) {
             }
         }
     }
-    BOOST_FOREACH(VarRecord& vr, _varRecords) {
+    for(VarRecord& vr : _varRecords) {
         qr.AddUnaryTerm(vr._id, 0, vr._coeff);
     }
 }
