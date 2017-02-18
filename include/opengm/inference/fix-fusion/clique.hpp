@@ -48,9 +48,6 @@
  */
 
 #include <vector>
-#include <boost/shared_ptr.hpp>
-#include <boost/foreach.hpp>
-
 
 /*
  * Abstract base class for defining the local energy of a clique.
@@ -109,7 +106,7 @@ class CliqueEnergy {
 template<typename R, typename T, int D>
 class CliqueSystem {
     public:
-        typedef boost::shared_ptr<CliqueEnergy<R, T, D> > CliquePointer;
+        typedef std::shared_ptr<CliqueEnergy<R, T, D> > CliquePointer;
 
         CliqueSystem() { }
 
@@ -145,7 +142,7 @@ void CliqueSystem<R, T, D>::AddClique(const CliquePointer& cp) {
 template <typename R, typename T, int D>
 R CliqueSystem<R, T, D>::Energy(const T* im) const {
     R energy = 0;
-    BOOST_FOREACH(const CliquePointer& cp, _cliques) {
+    for(const CliquePointer& cp : _cliques) {
         const CliqueEnergy<R, T, D>& c = *cp;
         T buf[c._size];
         for (int i = 0; i < c._size; ++i)
