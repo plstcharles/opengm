@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <boost/foreach.hpp>
 #include "higher-order-energy.hpp"
 #include "clique.hpp"
 
@@ -169,7 +168,7 @@ void SetupFusionEnergy(size_t size,
     hoe.AddVars(size);
     typedef typename CliqueSystem<Energy, Label, D>::CliquePointer 
         CliquePointer;
-    BOOST_FOREACH(const CliquePointer& cp, cliqueSystem.GetCliques()) {
+    for(const CliquePointer& cp : cliqueSystem.GetCliques()) {
         const CliqueEnergy<Energy, Label, D>& c = *cp;
         unsigned int size = c._size;
 

@@ -15,9 +15,6 @@
 #include "opengm/utilities/random.hxx"
 #include "opengm/datastructures/partition.hxx"
 
-#include <boost/lexical_cast.hpp>
-
-
 namespace opengm{
 
   template<class GM>
