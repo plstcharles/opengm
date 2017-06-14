@@ -115,18 +115,15 @@ class HigherOrderEnergy {
                 const VarId vars2[]);
 
         struct VarRecord {
-            VarRecord(VarId id) 
-                : _id(id), _positiveTerms(0), _higherOrderTerms(0), 
+            VarRecord()
+                : _positiveTerms(0), _higherOrderTerms(0),
                 _quadraticTerms(0), _sumDegrees(0), _terms(), _coeff(0) { }
-            VarId _id;
             int _positiveTerms;
             int _higherOrderTerms;
             int _quadraticTerms;
             int _sumDegrees;
             std::list<Term> _terms;
             R _coeff;
-
-            void PrintTerms() const;
         };
 
         R _constantTerm;
@@ -159,17 +156,16 @@ inline HigherOrderEnergy<R, D>::HigherOrderEnergy()
 template <typename R, int D>
 inline typename HigherOrderEnergy<R, D>::VarId 
 HigherOrderEnergy<R, D>::AddVar() {
-    VarRecord vr(_varCounter);
-    _varRecords.push_back(vr);
+    _varRecords.emplace_back();
     return _varCounter++;
 }
 
 template <typename R, int D>
 inline typename HigherOrderEnergy<R, D>::VarId 
 HigherOrderEnergy<R, D>::AddVars(int n) {
-    VarId firstVar = _varCounter;
-    for (int i = 0; i < n; ++i)
-        this->AddVar();
+    _varRecords.resize(_varRecords.size()+n);
+    const VarId firstVar = _varCounter;
+    _varCounter += n;
     return firstVar;
 }
 
@@ -241,7 +237,7 @@ void HigherOrderEnergy<R, D>::_EliminatePositiveTerms() {
                 positiveSum += t.coeff;
                 for (int i = 0; i < t.degree - 1; ++i) {
                     newVars[i] = t.vars[i+1];
-                    assert(newVars[i] >= vr._id);
+                    assert(newVars[i] >= VarId(varIndex));
                 }
                 AddTerm(t.coeff, t.degree - 1, newVars);
                 newVars[t.degree - 1] = newPosVar;
@@ -256,7 +252,7 @@ void HigherOrderEnergy<R, D>::_EliminatePositiveTerms() {
             }
         }
         VarId quadratic[2];
-        quadratic[0] = vr._id;
+        quadratic[0] = VarId(varIndex);
         quadratic[1] = newPosVar;
         AddTerm(positiveSum, 2, quadratic);
     }
@@ -295,14 +291,17 @@ void HigherOrderEnergy<R, D>::_ReduceNegativeTerms(QR& qr) {
             }
         }
     }
-    for(VarRecord& vr : _varRecords) {
-        qr.AddUnaryTerm(vr._id, 0, vr._coeff);
+    const size_t numVars = _varRecords.size();
+    for (size_t varIndex = 0; varIndex < numVars; ++varIndex) {
+        const VarRecord& vr = _varRecords[varIndex];
+        qr.AddUnaryTerm(VarId(varIndex), 0, vr._coeff);
     }
 }
 
 template <typename R, int D>
 template <typename QR>
 inline void HigherOrderEnergy<R, D>::ToQuadratic(QR& qr) {
+    _varRecords.reserve(_varRecords.size()*2);
     _EliminatePositiveTerms();
     _ReduceNegativeTerms(qr);
 }
@@ -323,6 +322,8 @@ inline int HigherOrderEnergy<R, D>::Compare(int d1, const VarId vars1[], int d2,
 template <typename R, int D>
 inline void HigherOrderEnergy<R, D>::Clear() {
     _varRecords.clear();
-};
+    _constantTerm = 0;
+    _varCounter = 0;
+}
 
 #endif
