@@ -29,6 +29,14 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 # debug info
 #--------------------------------------------------------------
 #add_definitions(-DTRWS_DEBUG_OUTPUT)
+option(USE_DEBUG_SYMBOLS "Enable debug symbols in all configs, for all targets" OFF)
+if(USE_DEBUG_SYMBOLS)
+    if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+    elseif("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
+    endif()
+endif()
 
 #--------------------------------------------------------------
 # warning level
