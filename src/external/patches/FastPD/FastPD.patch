@@ -1,6 +1,6 @@
-diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
+diff -urwB FastPD_DemoVersion/block.h FastPD.src-patched/block.h
 --- FastPD_DemoVersion/block.h	2003-08-12 00:32:42.000000000 -0400
-+++ FastPD.src-patched/block.h	2016-10-18 20:18:03.030080133 -0400
++++ FastPD.src-patched/block.h	2017-08-14 16:08:17.954141000 -0400
 @@ -89,8 +89,8 @@
  	deallocated only when the destructor is called.
  */
@@ -21,7 +21,7 @@ diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
  template <class Type> class Block
  {
  public:
-@@ -105,7 +107,7 @@
+@@ -105,10 +107,10 @@
  	   (optionally) the pointer to the function which
  	   will be called if allocation failed; the message
  	   passed to this function is "Not enough memory!" */
@@ -29,7 +29,11 @@ diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
 +	Block(int size, void (*err_function)(const char *) = NULL) { first = last = NULL; block_size = size; error_function = err_function; }
  
  	/* Destructor. Deallocates all items added so far */
- 	~Block() { while (first) { block *next = first -> next; delete first; first = next; } }
+-	~Block() { while (first) { block *next = first -> next; delete first; first = next; } }
++	~Block() { while (first) { block *next = first -> next; delete[] ((char*)first); first = next; } }
+ 
+ 	/* Allocates 'num' consecutive items; returns pointer
+ 	   to the first item. 'num' cannot be greater than the
 @@ -192,7 +194,7 @@
  	block	*scan_current_block;
  	Type	*scan_current_data;
@@ -39,7 +43,7 @@ diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
  };
  
  /***********************************************************************/
-@@ -206,7 +208,7 @@
+@@ -206,10 +208,10 @@
  	   (optionally) the pointer to the function which
  	   will be called if allocation failed; the message
  	   passed to this function is "Not enough memory!" */
@@ -47,7 +51,11 @@ diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
 +	DBlock(int size, void (*err_function)(const char *) = NULL) { first = NULL; first_free = NULL; block_size = size; error_function = err_function; }
  
  	/* Destructor. Deallocates all items added so far */
- 	~DBlock() { while (first) { block *next = first -> next; delete first; first = next; } }
+-	~DBlock() { while (first) { block *next = first -> next; delete first; first = next; } }
++	~DBlock() { while (first) { block *next = first -> next; delete[] ((char*)first); first = next; } }
+ 
+ 	/* Allocates one item */
+ 	Type *New()
 @@ -260,9 +262,10 @@
  	block		*first;
  	block_item	*first_free;
@@ -60,61 +68,68 @@ diff -u -r -N FastPD_DemoVersion/block.h FastPD.src-patched/block.h
  
  #endif
  
-diff -u -r -N FastPD_DemoVersion/common.h FastPD.src-patched/common.h
---- FastPD_DemoVersion/common.h	2007-08-17 00:11:30.000000000 -0400
-+++ FastPD.src-patched/common.h	2016-10-18 20:18:03.030080133 -0400
-@@ -1,6 +1,10 @@
--#ifndef _COMMON_H_
--#define _COMMON_H_
-+#ifndef _FAST_PD_COMMON_H_
-+#define _FAST_PD_COMMON_H_
-+
-+namespace fastPDLib {
- 
- typedef short TIME;
- 
-+}
-+
- #endif
-diff -u -r -N FastPD_DemoVersion/Fast_PD.cpp FastPD.src-patched/Fast_PD.cpp
---- FastPD_DemoVersion/Fast_PD.cpp	2009-01-14 13:50:32.000000000 -0500
-+++ FastPD.src-patched/Fast_PD.cpp	2016-10-18 20:18:03.030080133 -0400
-@@ -3,6 +3,8 @@
- #include <stdio.h>
- #include "Fast_PD.h"
- 
-+using namespace fastPDLib;
-+
- typedef CV_Fast_PD::Real Real;
- 
- /*
-diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
+diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
 --- FastPD_DemoVersion/Fast_PD.h	2009-02-24 16:10:46.000000000 -0500
-+++ FastPD.src-patched/Fast_PD.h	2016-10-18 20:52:49.418682546 -0400
-@@ -13,8 +13,20 @@
++++ FastPD.src-patched/Fast_PD.h	2017-08-11 20:43:26.000000000 -0400
+@@ -13,13 +13,24 @@
  #include <assert.h>
  #include <time.h>
  #include <string.h>
 -#include "graph.h"
 -#include "common.h"
 +#include "opengm/inference/external/fastpd/graph.h"
-+#include "opengm/inference/external/fastpd/common.h"
-+
+ 
+-#define DIST(l0,l1)   (_dist[l1*_numlabels+l0])
+-#define UPDATE_BALANCE_VAR0(y,d,h0,h1) { (y)+=(d); (h0)+=(d); (h1)-=d; }
+-#define NEW_LABEL(n) ((n)->parent && !((n)->is_sink))
+-#define REV(a) ((a)+1)
 +#include <inttypes.h>
 +
-+#ifndef MIN
-+#define MIN(a,b) ((a)>(b)?(b):(a))
-+#endif
-+
-+#ifndef MAX
-+#define MAX(a,b) ((a)<(b)?(b):(a))
-+#endif
-+
 +namespace fastPDLib {
++
++template<typename TReal>
++void UPDATE_BALANCE_VAR0(TReal& y, const TReal& d, TReal& h0, TReal& h1) {
++	y += d; h0 += d; h1 -= d;
++}
++
++inline bool NEW_LABEL(const Graph::node* n) {
++	return n->parent && !(n->is_sink);
++}
++
++inline Graph::arc* REV(Graph::arc* a) {
++	return a+1;
++}
  
- #define DIST(l0,l1)   (_dist[l1*_numlabels+l0])
- #define UPDATE_BALANCE_VAR0(y,d,h0,h1) { (y)+=(d); (h0)+=(d); (h1)-=d; }
-@@ -538,7 +550,7 @@
+ //#############################################################################
+ //#
+@@ -245,7 +256,7 @@
+ 					Real delta2;
+ 					if ( delta1 < 0 || (delta2=delta-delta1) < 0 ) 
+ 					{
+-						UPDATE_BALANCE_VAR0( *cur_y, delta1, cur_h[einfo->tail], cur_h[einfo->head] )
++						UPDATE_BALANCE_VAR0( *cur_y, delta1, cur_h[einfo->tail], cur_h[einfo->head] );
+ 						arcs->cap = arcs->r_cap = 0;
+ 						if ( delta < 0 ) // This may happen only for non-metric distances
+ 						{
+@@ -280,7 +291,7 @@
+ 			
+ 			// Run max-flow and update the primal variables
+ 			//
+-			Graph::flowtype max_flow = _graph -> run_maxflow(1);
++			Graph::flowtype max_flow = _graph -> maxflow<true>(1);
+ 			_APF -= (total_cap - max_flow);
+ 			if ( total_cap > max_flow )
+ 				_APF_change_time = _time;
+@@ -433,7 +444,7 @@
+ 			// Run max-flow and update the primal variables
+ 			//
+ 			assert( _iter <= 1 );
+-			Graph::flowtype max_flow = _graph -> apply_maxflow(1);
++			Graph::flowtype max_flow = _graph -> maxflow<false>(1);
+ 
+ 			double prev_APF = _APF;
+ 			for( i = 0; i < _numpoints; i++ )
+@@ -538,7 +549,7 @@
  					if ( _nodes[i].tr_cap )
  					{
  						//assert(  _nodes[i].tr_cap < 0 );
@@ -123,7 +138,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  						_nodes[i].is_sink = 1;
  						_nodes[i].DIST = 1;
  					}
-@@ -653,7 +665,7 @@
+@@ -653,7 +664,7 @@
  				if ( nd->tr_cap > 0 )
  				{
  					nd -> is_sink = 0;
@@ -132,7 +147,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  
  					_graph->set_active(nd);
-@@ -664,7 +676,7 @@
+@@ -664,7 +675,7 @@
  				else if (nd->tr_cap < 0)
  				{
  					nd -> is_sink = 1;
@@ -141,7 +156,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  				}
  				else nd -> parent = NULL;
-@@ -679,7 +691,7 @@
+@@ -679,7 +690,7 @@
  				if ( nd->tr_cap > 0 )
  				{
  					nd -> is_sink = 0;
@@ -150,7 +165,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  
  					_graph->set_active(nd);
-@@ -690,7 +702,7 @@
+@@ -690,7 +701,7 @@
  				else if (nd->tr_cap < 0)
  				{
  					nd -> is_sink = 1;
@@ -159,7 +174,16 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  					nd -> DIST = 1;
  				}
  				else nd -> parent = NULL;
-@@ -712,7 +724,7 @@
+@@ -703,7 +714,7 @@
+ 
+ 			// Run max-flow 
+ 			//
+-			Graph::flowtype max_flow = _graph -> apply_maxflow(0);
++			Graph::flowtype max_flow = _graph -> maxflow<false>(0);
+ 
+ 			// Traverse source tree to update the primal variables 
+ 			//
+@@ -712,7 +723,7 @@
  			for( i = source_nodes_start1; i >= 0; )
  			{
  				Graph::node *n = &_nodes[i];
@@ -168,7 +192,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  				{
  					Node_info *pinfo = &_pinfo[i];
  
-@@ -779,7 +791,7 @@
+@@ -779,7 +790,7 @@
  			for( i = 0; i < num_children; i++ )
  			{
  				Graph::node *n = _children[i];
@@ -177,7 +201,7 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  				Node_info *pinfo = &_pinfo[id];
  
  				// If necessary, repair "loads" in case of non-metric
-@@ -942,10 +954,7 @@
+@@ -942,10 +953,7 @@
  			}
  		}
  
@@ -189,7 +213,36 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  		{
  			printf("%s",msg);
  		}
-@@ -1009,6 +1018,8 @@
+@@ -954,7 +962,7 @@
+ 		{
+ 			Graph::Label label; // current label
+ 			Real height; // active height of node
+-			TIME time; // timestamp of change
++			short time; // timestamp of change
+  			int next;    
+ 			int prev;
+ 			int *pairs; // neighboring edges
+@@ -985,7 +993,7 @@
+ 		struct Pair_info
+ 		{
+ 			int i0, i1;
+-			TIME time;
++			short time;
+ 		};
+ 
+ 		struct Arc_info
+@@ -1003,12 +1011,19 @@
+ 		Graph::node **_children;
+ 		int          *_pairs_arr;
+ 
++		template<typename TLabel0, typename TLabel1>
++		Real DIST(TLabel0 l0, TLabel1 l1) {
++			return _dist[l1*_numlabels+l0];
++		}
++
+         // Assignment or copying are not allowed
+         //
+         CV_Fast_PD( const CV_Fast_PD &other );
          CV_Fast_PD operator=( const CV_Fast_PD &other );
  };
  
@@ -198,27 +251,10 @@ diff -u -r -N FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  #endif /* __FAST_PD_H__ */
  
  //#############################################################################
-diff -u -r -N FastPD_DemoVersion/graph.cpp FastPD.src-patched/graph.cpp
---- FastPD_DemoVersion/graph.cpp	2007-08-20 18:03:30.000000000 -0400
-+++ FastPD.src-patched/graph.cpp	2016-10-18 20:18:03.034079993 -0400
-@@ -2,9 +2,11 @@
- /* Vladimir Kolmogorov (vnk@cs.cornell.edu), 2001. */
- 
- #include <stdio.h>
--#include "graph.h"
-+#include "opengm/inference/external/fastpd/graph.h"
- 
--Graph::Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(char *))
-+using namespace fastPDLib;
-+
-+Graph::Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(const char *))
- {
- 	error_function = err_function;
- 	_nodes = nodes;
-diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
+diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 --- FastPD_DemoVersion/graph.h	2009-02-24 16:10:08.000000000 -0500
-+++ FastPD.src-patched/graph.h	2016-10-18 20:18:03.034079993 -0400
-@@ -74,37 +74,42 @@
++++ FastPD.src-patched/graph.h	2017-08-14 16:14:41.324044000 -0400
+@@ -74,38 +74,34 @@
  	///////////////////////////////////////////////////
  */
  
@@ -230,7 +266,6 @@ diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 -#include "block.h"
 -#include "common.h"
 +#include "opengm/inference/external/fastpd/block.h"
-+#include "opengm/inference/external/fastpd/common.h"
 +
 +namespace fastPDLib {
  
@@ -245,35 +280,32 @@ diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +const unsigned int NODE_BLOCK_SIZE = 512;
 +const unsigned int ARC_BLOCK_SIZE = 1024;
 +const unsigned int NODEPTR_BLOCK_SIZE = 128;
-+//#define NODE_BLOCK_SIZE 512
-+//#define ARC_BLOCK_SIZE 1024
-+//#define NODEPTR_BLOCK_SIZE 128
  
  /*
  	special constants for node->parent
  */
 -#define TERMINAL ( (Graph::arc *) 1 )		/* to terminal */
 -#define ORPHAN   ( (Graph::arc *) 2 )		/* orphan */
+-
+-#define INFINITE_D 1000000000		/* infinite distance to the terminal */
 +#define FAST_PD_TERMINAL ( (Graph::arc *) 1 )		/* to terminal */
 +#define FAST_PD_ORPHAN   ( (Graph::arc *) 2 )		/* orphan */
- 
--#define INFINITE_D 1000000000		/* infinite distance to the terminal */
 +#define FAST_PD_INFINITE_D 1000000000		/* infinite distance to the terminal */
  
  class Graph
  {
  public:
  
- #ifdef _MANY_LABELS_
+-#ifdef _MANY_LABELS_
 -	typedef int Label;
-+	typedef FASTPDLABELVALUE Label;
- #else
+-#else
 -	typedef unsigned char Label;
+-#endif
 +	typedef FASTPDLABELVALUE Label;
- #endif
  
  	typedef enum
-@@ -115,11 +120,11 @@
+ 	{
+@@ -115,42 +111,81 @@
  
  	/* Type of edge weights.
  	   Can be changed to char, int, float, double, ... */
@@ -287,7 +319,113 @@ diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  
  	typedef void * node_id;
  
-@@ -202,7 +207,7 @@
+ 	/* interface functions */
+ 
+-	/* Destructor */
+-	~Graph();
+-
+ 	/* Adds a node to the graph */
+-	void add_nodes();
++	inline void add_nodes()
++	{
++		for( int i = 0; i < _num_nodes; i++ )
++		{
++			_nodes[i].first = NULL;
++			_nodes[i].tr_cap = 0;
++			_nodes[i].conflict_time = ushort(-1);
++		}
++	}
+ 
+ 	/* Adds a bidirectional edge between 'from' and 'to'
+ 	   with the weights 'cap' and 'rev_cap' */
+-	void add_edges( int *pairs, int numpairs );
++	inline void add_edges( int *pairs, int numpairs )
++	{
++		captype cap = 0;
++		captype rev_cap = 0;
++		for( int i = 0; i < 2*numpairs; i+=2 )
++		{
++			node_id from = &_nodes[pairs[i]];
++			node_id to   = &_nodes[pairs[i+1]];
++			arc *a = &_arcs[i];
++			arc *a_rev = a + 1;
++			a -> sister = a_rev;
++			a_rev -> sister = a;
++			a -> next = ((node*)from) -> first;
++			((node*)from) -> first = a;
++			a_rev -> next = ((node*)to) -> first;
++			((node*)to) -> first = a_rev;
++			a -> head = (node*)to;
++			a_rev -> head = (node*)from;
++			a -> r_cap = cap;
++			a_rev -> r_cap = rev_cap;
++		}
++	}
+ 
+ 	/* Sets the weights of the edges 'SOURCE->i' and 'i->SINK'
+ 	   Can be called at most once for each node before any call to 'add_tweights'.
+ 	   Weights can be negative */
+-	void set_tweights(node_id i, captype cap_source, captype cap_sink);
++	inline void set_tweights(node_id i, captype cap_source, captype cap_sink)
++	{
++		flow += (cap_source < cap_sink) ? cap_source : cap_sink;
++		((node*)i) -> tr_cap = cap_source - cap_sink;
++	}
+ 
+ 	/* Adds new edges 'SOURCE->i' and 'i->SINK' with corresponding weights
+ 	   Can be called multiple times for each node.
+ 	   Weights can be negative */
+-	void add_tweights(node_id i, captype cap_source, captype cap_sink);
++	inline void add_tweights(node_id i, captype cap_source, captype cap_sink)
++	{
++		captype delta = ((node*)i) -> tr_cap;
++		if (delta > 0) cap_source += delta;
++		else           cap_sink   -= delta;
++		flow += (cap_source < cap_sink) ? cap_source : cap_sink;
++		((node*)i) -> tr_cap = cap_source - cap_sink;
++	}
+ 
+ 	/* After the maxflow is computed, this function returns to which
+ 	   segment the node 'i' belongs (Graph::SOURCE or Graph::SINK) */
+-	termtype what_segment(node_id i);
++	inline termtype what_segment(node_id i)
++	{
++		if (((node*)i)->parent && !((node*)i)->is_sink) return SOURCE;
++		return SINK;
++	}
+ 
+-	/* Computes the maxflow. Can be called only once. */
+-	flowtype apply_maxflow( int track_source_nodes );
+ 
+ /***********************************************************************/
+ /***********************************************************************/
+@@ -171,12 +205,9 @@
+ 		int				TS;			/* timestamp showing when DIST was computed */
+ 		int				DIST;		/* distance to the terminal */
+ 		short			is_sink;	/* flag showing whether the node is in the source or in the sink tree */
+-
+ 		captype			tr_cap;		/* if tr_cap > 0 then tr_cap is residual capacity of the arc SOURCE->node
+ 									   otherwise         -tr_cap is residual capacity of the arc node->SINK */
+-#ifndef _METRIC_DISTANCE_
+-		TIME            conflict_time;
+-#endif
++		ushort          conflict_time;
+ 	} node;
+ 
+ 	/* arc structure */
+@@ -185,10 +216,8 @@
+ 		node_st			*head;		/* node q, i.e. node the arc points to */
+ 		arc_st			*next;		/* next arc with the same originating node */
+ 		arc_st			*sister;	/* arc qp, i.e. reverse arc */
+-
+ 		captype			r_cap;		/* residual capacity */
+-
+-		Real            cap;        // cap_{pq}   
++		captype         cap;
+ 	} arc;
+ 
+ 	/* 'pointer to node' structure */
+@@ -202,7 +231,7 @@
  	Block<arc>			*arc_block;
  	DBlock<nodeptr>		*nodeptr_block;
  
@@ -296,19 +434,147 @@ diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  										   with a corresponding error message
  										   (or exit(1) is called if it's NULL) */
  
-@@ -212,9 +217,9 @@
+@@ -212,9 +241,16 @@
  	   function which will be called if an error occurs;
  	   an error message is passed to this function. If this
  	   argument is omitted, exit(1) will be called. */
 -	Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(char *) = NULL);
-+	Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(const char *) = NULL);
++	inline Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(const char *) = NULL)
++	{
++		error_function = err_function;
++		_nodes = nodes;
++		_arcs  = arcs ;
++		_num_nodes = num_nodes;
++		flow = 0;
++	}
  
 -	void Graph::reset_flow( void )
-+	void reset_flow( void )
++	inline void reset_flow( void )
  	{
  		flow = 0;
  	}
-@@ -249,7 +254,7 @@
+@@ -233,9 +269,117 @@
+ 
+ /***********************************************************************/
+ 
+-	flowtype run_maxflow( int track_source_nodes );
+-	void setup( void );
+-	void do_augment(arc *middle_arc);
++	template<bool bORIG>
++	inline flowtype maxflow( int init_on )
++	{
++		node *i, *j, *current_node = NULL;
++		arc *a;
++		nodeptr *np, *np_next;
++		if(bORIG || init_on)
++			maxflow_init<bORIG>();
++		nodeptr_block = new DBlock<nodeptr>(NODEPTR_BLOCK_SIZE, error_function);
++		while ( 1 )
++		{
++			if ((i=current_node))
++			{
++				i -> next = NULL; /* remove active flag */
++				if (!i->parent) i = NULL;
++			}
++			if (!i)
++			{
++				if (!(i = next_active())) break;
++			}
++			/* growth */
++			if (!i->is_sink)
++			{
++				/* grow source tree */
++				for (a=i->first; a; a=a->next)
++				if (a->r_cap)
++				{
++					j = a -> head;
++					if (!j->parent)
++					{
++						j -> is_sink = 0;
++						j -> parent = a -> sister;
++						j -> TS = i -> TS;
++						j -> DIST = i -> DIST + 1;
++						set_active(j);
++					}
++					else if (j->is_sink) break;
++					else if (j->TS <= i->TS &&
++							 j->DIST > i->DIST)
++					{
++						/* heuristic - trying to make the distance from j to the source shorter */
++						j -> parent = a -> sister;
++						j -> TS = i -> TS;
++						j -> DIST = i -> DIST + 1;
++					}
++				}
++			}
++			else
++			{
++				if(bORIG)
++				{
++					/* grow sink tree */
++					for (a=i->first; a; a=a->next)
++					if (a->sister->r_cap)
++					{
++						j = a -> head;
++						if (!j->parent)
++						{
++							j -> is_sink = 1;
++							j -> parent = a -> sister;
++							j -> TS = i -> TS;
++							j -> DIST = i -> DIST + 1;
++							set_active(j);
++						}
++						else if (!j->is_sink) { a = a -> sister; break; }
++						else if (j->TS <= i->TS &&
++								 j->DIST > i->DIST)
++						{
++							/* heuristic - trying to make the distance from j to the sink shorter */
++							j -> parent = a -> sister;
++							j -> TS = i -> TS;
++							j -> DIST = i -> DIST + 1;
++						}
++					}
++				}
++				else
++				{
++					a = NULL;
++				}
++			}
++			TIME ++;
++			if (a)
++			{
++				i -> next = i; /* set active flag */
++				current_node = i;
++				/* augmentation */
++				augment<bORIG>(a);
++				/* augmentation end */
++				/* adoption */
++				while ((np=orphan_first))
++				{
++					np_next = np -> next;
++					np -> next = NULL;
++					while ((np=orphan_first))
++					{
++						orphan_first = np -> next;
++						i = np -> ptr;
++						nodeptr_block -> Delete(np);
++						if (!orphan_first) orphan_last = NULL;
++						if (i->is_sink) process_orphan<false>(i);
++						else            process_orphan<true>(i);
++					}
++					orphan_first = np_next;
++				}
++				/* adoption end */
++			}
++			else current_node = NULL;
++		}
++		delete nodeptr_block;
++		return flow;
++	}
+ 
+ 	/*
+ 	Functions for processing active list.
+@@ -249,7 +393,7 @@
  	is empty, it is replaced by the second queue
  	(and the second queue becomes empty).
  	*/
@@ -317,388 +583,250 @@ diff -u -r -N FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  	{
  		if (!i->next)
  		{
-@@ -268,4 +273,6 @@
- 	void process_sink_orphan(node *i);
+@@ -260,12 +404,241 @@
+ 			i -> next = i;
+ 		}
+ 	}
+-	node *next_active();
+ 
+-	void maxflow_init();
+-	void augment(arc *middle_arc);
+-	void process_source_orphan(node *i);
+-	void process_sink_orphan(node *i);
++	/*
++	Returns the next active node.
++	If it is connected to the sink, it stays in the list,
++	otherwise it is removed from the list
++	*/
++	inline node *next_active()
++	{
++		node *i;
++		while ( 1 )
++		{
++			if (!(i=queue_first[0]))
++			{
++				queue_first[0] = i = queue_first[1];
++				queue_last[0]  = queue_last[1];
++				queue_first[1] = NULL;
++				queue_last[1]  = NULL;
++				if (!i) return NULL;
++			}
++			/* remove it from the active list */
++			if (i->next == i) queue_first[0] = queue_last[0] = NULL;
++			else              queue_first[0] = i -> next;
++			i -> next = NULL;
++			/* a node in the list is active iff it has a parent */
++			if (i->parent) return i;
++		}
++	}
++
++	template<bool bORIG>
++	inline void maxflow_init() {
++		node *i;
++		queue_first[0] = queue_last[0] = NULL;
++		queue_first[1] = queue_last[1] = NULL;
++		orphan_first = NULL;
++		int k;
++		for( k = 0, i = _nodes; k < _num_nodes; k++, i++ )
++		{
++			i -> next = NULL;
++			i -> TS = 0;
++			if (i->tr_cap > 0)
++			{
++				/* i is connected to the source */
++				i -> is_sink = 0;
++				i -> parent = FAST_PD_TERMINAL;
++				set_active(i);
++				i -> TS = 0;
++				i -> DIST = 1;
++			}
++			else if (i->tr_cap < 0)
++			{
++				/* i is connected to the sink */
++				i -> is_sink = 1;
++				i -> parent = FAST_PD_TERMINAL;
++				if(bORIG)
++					set_active(i);
++				i -> TS = 0;
++				i -> DIST = 1;
++			}
++			else
++			{
++				i -> parent = NULL;
++			}
++		}
++		TIME = 0;
++	}
++
++	inline void set_orphan_front(node *i)
++	{
++		nodeptr *np;
++		i -> parent = FAST_PD_ORPHAN;
++		np = nodeptr_block -> New();
++		np -> ptr = i;
++		np -> next = orphan_first;
++		orphan_first = np;
++	}
++
++	template<bool bORIG>
++	inline void augment(arc *middle_arc)
++	{
++		node *i;
++		arc *a;
++		captype bottleneck;
++		/* 1. Finding bottleneck capacity */
++		/* 1a - the source tree */
++		bottleneck = middle_arc -> r_cap;
++		for (i=middle_arc->sister->head; ; i=a->head)
++		{
++			a = i -> parent;
++			if (a == FAST_PD_TERMINAL) break;
++			if (bottleneck > a->sister->r_cap) bottleneck = a -> sister -> r_cap;
++		}
++		if (bottleneck > i->tr_cap) bottleneck = i -> tr_cap;
++		/* 1b - the sink tree */
++		for (i=middle_arc->head; ; i=a->head)
++		{
++			a = i -> parent;
++			if (a == FAST_PD_TERMINAL) break;
++			if (bottleneck > a->r_cap) bottleneck = a -> r_cap;
++		}
++		if (bottleneck > - i->tr_cap) bottleneck = - i -> tr_cap;
++		/* 2. Augmenting */
++		/* 2a - the source tree */
++		middle_arc -> sister -> r_cap += bottleneck;
++		middle_arc -> r_cap -= bottleneck;
++		for (i=middle_arc->sister->head; ; i=a->head)
++		{
++			a = i -> parent;
++			if (a == FAST_PD_TERMINAL) break;
++			a -> r_cap += bottleneck;
++			a -> sister -> r_cap -= bottleneck;
++			if (!a->sister->r_cap)
++			{
++				/* add i to the adoption list */
++				set_orphan_front(i);
++			}
++		}
++		i -> tr_cap -= bottleneck;
++		if (!i->tr_cap)
++		{
++			/* add i to the adoption list */
++			set_orphan_front(i);
++		}
++		/* 2b - the sink tree */
++		for (i=middle_arc->head; ; i=a->head)
++		{
++			a = i -> parent;
++			if (a == FAST_PD_TERMINAL) break;
++			a -> sister -> r_cap += bottleneck;
++			a -> r_cap -= bottleneck;
++			if (!a->r_cap)
++			{
++				/* add i to the adoption list */
++				set_orphan_front(i);
++			}
++		}
++		i -> tr_cap += bottleneck;
++		if (!i->tr_cap)
++		{
++			if(bORIG)
++			{
++				/* add i to the adoption list */
++				set_orphan_front(i);
++			}
++			else
++			{
++				i->parent = NULL;
++			}
++		}
++		flow += bottleneck;
++	}
++
++	template<bool bSOURCE>
++	inline void process_orphan(node *i)
++	{
++		node *j;
++		arc *a0, *a0_min = NULL, *a;
++		int d, d_min = FAST_PD_INFINITE_D;
++		/* trying to find a new parent */
++		for (a0=i->first; a0; a0=a0->next)
++		if (bSOURCE?(a0->sister->r_cap):(a0->r_cap))
++		{
++			j = a0 -> head;
++			if ((bSOURCE?(!j->is_sink):(j->is_sink)) && (a=j->parent))
++			{
++				/* checking the origin of j */
++				d = 0;
++				while ( 1 )
++				{
++					if (j->TS == TIME)
++					{
++						d += j -> DIST;
++						break;
++					}
++					a = j -> parent;
++					d ++;
++					if (a==FAST_PD_TERMINAL)
++					{
++						j -> TS = TIME;
++						j -> DIST = 1;
++						break;
++					}
++					if (a==FAST_PD_ORPHAN) { d = FAST_PD_INFINITE_D; break; }
++					j = a -> head;
++				}
++				if (d<FAST_PD_INFINITE_D) /* j originates from the terminal - done */
++				{
++					if (d<d_min)
++					{
++						a0_min = a0;
++						d_min = d;
++					}
++					/* set marks along the path */
++					for (j=a0->head; j->TS!=TIME; j=j->parent->head)
++					{
++						j -> TS = TIME;
++						j -> DIST = d --;
++					}
++				}
++			}
++		}
++		if ((i->parent = a0_min))
++		{
++			i -> TS = TIME;
++			i -> DIST = d_min + 1;
++		}
++		else
++		{
++			/* no parent is found */
++			i -> TS = 0;
++
++			/* process neighbors */
++			for (a0=i->first; a0; a0=a0->next)
++			{
++				j = a0 -> head;
++				if ((bSOURCE?(!j->is_sink):(j->is_sink)) && (a=j->parent))
++				{
++					if (bSOURCE?(a0->sister->r_cap):(a0->r_cap)) set_active(j);
++					if (a!=FAST_PD_TERMINAL && a!=FAST_PD_ORPHAN && a->head==i)
++					{
++						/* add j to the adoption list */
++						nodeptr *np;
++						j -> parent = FAST_PD_ORPHAN;
++						np = nodeptr_block -> New();
++						np -> ptr = j;
++						if (orphan_last) orphan_last -> next = np;
++						else             orphan_first        = np;
++						orphan_last = np;
++						np -> next = NULL;
++					}
++				}
++			}
++		}
++	}
  };
  
 +}
 +
  #endif
-diff -u -r -N FastPD_DemoVersion/LinkedBlockList.cpp FastPD.src-patched/LinkedBlockList.cpp
---- FastPD_DemoVersion/LinkedBlockList.cpp	2005-07-21 09:02:30.000000000 -0400
-+++ FastPD.src-patched/LinkedBlockList.cpp	2016-10-18 20:18:03.034079993 -0400
-@@ -1,4 +1,6 @@
--#include "LinkedBlockList.h"
-+#include "opengm/inference/external/fastpd/LinkedBlockList.h"
-+
-+using namespace fastPDLib;
- 
- /*********************************************************************/
- 
-@@ -58,7 +60,7 @@
- 		m_head = m_head->m_next;
- 		delete tmp;
- 	}
--};
-+}
- 
- /*********************************************************************/
- 
-diff -u -r -N FastPD_DemoVersion/LinkedBlockList.h FastPD.src-patched/LinkedBlockList.h
---- FastPD_DemoVersion/LinkedBlockList.h	2005-07-21 09:02:30.000000000 -0400
-+++ FastPD.src-patched/LinkedBlockList.h	2016-10-18 20:18:03.034079993 -0400
-@@ -6,14 +6,16 @@
- // For other graphs, it should be set to the average expected number of neighbors
- // Data in linked list for the neighborhood system is allocated in blocks of size GCLL_BLOCK_SIZE 
- 
--#ifndef __LINKEDBLOCKLIST_H__
--#define __LINKEDBLOCKLIST_H__
-+#ifndef __FAST_PD_LINKEDBLOCKLIST_H__
-+#define __FAST_PD_LINKEDBLOCKLIST_H__
-+
-+namespace fastPDLib {
- 
- #define GCLL_BLOCK_SIZE 4  
- // GCLL_BLOCKSIZE should "fit" into the type BlockType. That is 
- // if GCLL_BLOCKSIZE is larger than 255 but smaller than largest short integer
- // then  BlockType should be set to short
--typedef char BlockType;
-+typedef unsigned char BlockType;
- 
- //The type of data stored in the linked list
- typedef void * ListType;
-@@ -46,5 +48,7 @@
- 	LLBlock *m_cursor;
- };
- 
-+}
-+
- #endif
- 
-diff -u -r -N FastPD_DemoVersion/maxflow.cpp FastPD.src-patched/maxflow.cpp
---- FastPD_DemoVersion/maxflow.cpp	2009-02-24 16:04:44.000000000 -0500
-+++ FastPD.src-patched/maxflow.cpp	2016-10-18 20:18:03.034079993 -0400
-@@ -2,7 +2,9 @@
- /* Vladimir Kolmogorov (vnk@cs.cornell.edu), 2001. */
- 
- #include <stdio.h>
--#include "graph.h"
-+#include "opengm/inference/external/fastpd/graph.h"
-+
-+using namespace fastPDLib;
- 
- /*
- 	special constants for node->parent
-@@ -63,7 +65,7 @@
- 		{
- 			/* i is connected to the source */
- 			i -> is_sink = 0;
--			i -> parent = TERMINAL;
-+			i -> parent = FAST_PD_TERMINAL;
- 			set_active(i);
- 			i -> TS = 0;
- 			i -> DIST = 1;
-@@ -72,7 +74,7 @@
- 		{
- 			/* i is connected to the sink */
- 			i -> is_sink = 1;
--			i -> parent = TERMINAL;
-+			i -> parent = FAST_PD_TERMINAL;
- 			i -> TS = 0;
- 			i -> DIST = 1;
- 		}
-@@ -100,7 +102,7 @@
- 	for (i=middle_arc->sister->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		if (bottleneck > a->sister->r_cap) bottleneck = a -> sister -> r_cap;
- 	}
- 	if (bottleneck > i->tr_cap) bottleneck = i -> tr_cap;
-@@ -108,7 +110,7 @@
- 	for (i=middle_arc->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		if (bottleneck > a->r_cap) bottleneck = a -> r_cap;
- 	}
- 	if (bottleneck > - i->tr_cap) bottleneck = - i -> tr_cap;
-@@ -121,13 +123,13 @@
- 	for (i=middle_arc->sister->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		a -> r_cap += bottleneck;
- 		a -> sister -> r_cap -= bottleneck;
- 		if (!a->sister->r_cap)
- 		{
- 			/* add i to the adoption list */
--			i -> parent = ORPHAN;
-+			i -> parent = FAST_PD_ORPHAN;
- 			np = nodeptr_block -> New();
- 			np -> ptr = i;
- 			np -> next = orphan_first;
-@@ -138,7 +140,7 @@
- 	if (!i->tr_cap)
- 	{
- 		/* add i to the adoption list */
--		i -> parent = ORPHAN;
-+		i -> parent = FAST_PD_ORPHAN;
- 		np = nodeptr_block -> New();
- 		np -> ptr = i;
- 		np -> next = orphan_first;
-@@ -148,13 +150,13 @@
- 	for (i=middle_arc->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		a -> sister -> r_cap += bottleneck;
- 		a -> r_cap -= bottleneck;
- 		if (!a->r_cap)
- 		{
- 			/* add i to the adoption list */
--			i -> parent = ORPHAN;
-+			i -> parent = FAST_PD_ORPHAN;
- 			np = nodeptr_block -> New();
- 			np -> ptr = i;
- 			np -> next = orphan_first;
-@@ -177,7 +179,7 @@
- 	node *j;
- 	arc *a0, *a0_min = NULL, *a;
- 	nodeptr *np;
--	int d, d_min = INFINITE_D;
-+	int d, d_min = FAST_PD_INFINITE_D;
- 
- 	/* trying to find a new parent */
- 	for (a0=i->first; a0; a0=a0->next)
-@@ -197,16 +199,16 @@
- 				}
- 				a = j -> parent;
- 				d ++;
--				if (a==TERMINAL)
-+				if (a==FAST_PD_TERMINAL)
- 				{
- 					j -> TS = TIME;
- 					j -> DIST = 1;
- 					break;
- 				}
--				if (a==ORPHAN) { d = INFINITE_D; break; }
-+				if (a==FAST_PD_ORPHAN) { d = FAST_PD_INFINITE_D; break; }
- 				j = a -> head;
- 			}
--			if (d<INFINITE_D) /* j originates from the source - done */
-+			if (d<FAST_PD_INFINITE_D) /* j originates from the source - done */
- 			{
- 				if (d<d_min)
- 				{
-@@ -223,7 +225,7 @@
- 		}
- 	}
- 
--	if (i->parent = a0_min)
-+	if ((i->parent = a0_min))
- 	{
- 		i -> TS = TIME;
- 		i -> DIST = d_min + 1;
-@@ -240,10 +242,10 @@
- 			if (!j->is_sink && (a=j->parent))
- 			{
- 				if (a0->sister->r_cap) set_active(j);
--				if (a!=TERMINAL && a!=ORPHAN && a->head==i)
-+				if (a!=FAST_PD_TERMINAL && a!=FAST_PD_ORPHAN && a->head==i)
- 				{
- 					/* add j to the adoption list */
--					j -> parent = ORPHAN;
-+					j -> parent = FAST_PD_ORPHAN;
- 					np = nodeptr_block -> New();
- 					np -> ptr = j;
- 					if (orphan_last) orphan_last -> next = np;
-@@ -261,7 +263,7 @@
- 	node *j;
- 	arc *a0, *a0_min = NULL, *a;
- 	nodeptr *np;
--	int d, d_min = INFINITE_D;
-+	int d, d_min = FAST_PD_INFINITE_D;
- 
- 	/* trying to find a new parent */
- 	for (a0=i->first; a0; a0=a0->next)
-@@ -281,16 +283,16 @@
- 				}
- 				a = j -> parent;
- 				d ++;
--				if (a==TERMINAL)
-+				if (a==FAST_PD_TERMINAL)
- 				{
- 					j -> TS = TIME;
- 					j -> DIST = 1;
- 					break;
- 				}
--				if (a==ORPHAN) { d = INFINITE_D; break; }
-+				if (a==FAST_PD_ORPHAN) { d = FAST_PD_INFINITE_D; break; }
- 				j = a -> head;
- 			}
--			if (d<INFINITE_D) /* j originates from the sink - done */
-+			if (d<FAST_PD_INFINITE_D) /* j originates from the sink - done */
- 			{
- 				if (d<d_min)
- 				{
-@@ -307,7 +309,7 @@
- 		}
- 	}
- 
--	if (i->parent = a0_min)
-+	if ((i->parent = a0_min))
- 	{
- 		i -> TS = TIME;
- 		i -> DIST = d_min + 1;
-@@ -324,10 +326,10 @@
- 			if (j->is_sink && (a=j->parent))
- 			{
- 				if (a0->r_cap) set_active(j);
--				if (a!=TERMINAL && a!=ORPHAN && a->head==i)
-+				if (a!=FAST_PD_TERMINAL && a!=FAST_PD_ORPHAN && a->head==i)
- 				{
- 					/* add j to the adoption list */
--					j -> parent = ORPHAN;
-+					j -> parent = FAST_PD_ORPHAN;
- 					np = nodeptr_block -> New();
- 					np -> ptr = j;
- 					if (orphan_last) orphan_last -> next = np;
-@@ -354,7 +356,7 @@
- 
- 	while ( 1 )
- 	{
--		if (i=current_node)
-+		if ((i=current_node))
- 		{
- 			i -> next = NULL; /* remove active flag */
- 			if (!i->parent) i = NULL;
-@@ -405,12 +407,12 @@
- 			/* augmentation end */
- 
- 			/* adoption */
--			while (np=orphan_first)
-+			while ((np=orphan_first))
- 			{
- 				np_next = np -> next;
- 				np -> next = NULL;
- 
--				while (np=orphan_first)
-+				while ((np=orphan_first))
- 				{
- 					orphan_first = np -> next;
- 					i = np -> ptr;
-@@ -459,7 +461,7 @@
- 		{
- 			/* i is connected to the source */
- 			i -> is_sink = 0;
--			i -> parent = TERMINAL;
-+			i -> parent = FAST_PD_TERMINAL;
- 			set_active(i);
- 			i -> TS = 0;
- 			i -> DIST = 1;
-@@ -468,7 +470,7 @@
- 		{
- 			/* i is connected to the sink */
- 			i -> is_sink = 1;
--			i -> parent = TERMINAL;
-+			i -> parent = FAST_PD_TERMINAL;
- 			set_active(i);
- 			i -> TS = 0;
- 			i -> DIST = 1;
-@@ -498,7 +500,7 @@
- 	for (i=middle_arc->sister->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		if (bottleneck > a->sister->r_cap) bottleneck = a -> sister -> r_cap;
- 	}
- 	if (bottleneck > i->tr_cap) bottleneck = i -> tr_cap;
-@@ -506,7 +508,7 @@
- 	for (i=middle_arc->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		if (bottleneck > a->r_cap) bottleneck = a -> r_cap;
- 	}
- 	if (bottleneck > - i->tr_cap) bottleneck = - i -> tr_cap;
-@@ -519,13 +521,13 @@
- 	for (i=middle_arc->sister->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		a -> r_cap += bottleneck;
- 		a -> sister -> r_cap -= bottleneck;
- 		if (!a->sister->r_cap)
- 		{
- 			/* add i to the adoption list */
--			i -> parent = ORPHAN;
-+			i -> parent = FAST_PD_ORPHAN;
- 			np = nodeptr_block -> New();
- 			np -> ptr = i;
- 			np -> next = orphan_first;
-@@ -536,7 +538,7 @@
- 	if (!i->tr_cap)
- 	{
- 		/* add i to the adoption list */
--		i -> parent = ORPHAN;
-+		i -> parent = FAST_PD_ORPHAN;
- 		np = nodeptr_block -> New();
- 		np -> ptr = i;
- 		np -> next = orphan_first;
-@@ -546,13 +548,13 @@
- 	for (i=middle_arc->head; ; i=a->head)
- 	{
- 		a = i -> parent;
--		if (a == TERMINAL) break;
-+		if (a == FAST_PD_TERMINAL) break;
- 		a -> sister -> r_cap += bottleneck;
- 		a -> r_cap -= bottleneck;
- 		if (!a->r_cap)
- 		{
- 			/* add i to the adoption list */
--			i -> parent = ORPHAN;
-+			i -> parent = FAST_PD_ORPHAN;
- 			np = nodeptr_block -> New();
- 			np -> ptr = i;
- 			np -> next = orphan_first;
-@@ -563,7 +565,7 @@
- 	if (!i->tr_cap)
- 	{
- 		/* add i to the adoption list */
--		i -> parent = ORPHAN;
-+		i -> parent = FAST_PD_ORPHAN;
- 		np = nodeptr_block -> New();
- 		np -> ptr = i;
- 		np -> next = orphan_first;
-@@ -587,7 +589,7 @@
- 
- 	while ( 1 )
- 	{
--		if (i=current_node)
-+		if ((i=current_node))
- 		{
- 			i -> next = NULL; /* remove active flag */
- 			if (!i->parent) i = NULL;
-@@ -663,12 +665,12 @@
- 			/* augmentation end */
- 
- 			/* adoption */
--			while (np=orphan_first)
-+			while ((np=orphan_first))
- 			{
- 				np_next = np -> next;
- 				np -> next = NULL;
- 
--				while (np=orphan_first)
-+				while ((np=orphan_first))
- 				{
- 					orphan_first = np -> next;
- 					i = np -> ptr;

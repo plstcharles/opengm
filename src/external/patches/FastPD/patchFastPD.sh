@@ -48,7 +48,9 @@ fi
 
 # extract files
 echo "Extracting files from $FastPD_FILENAME"
-unzip -juqn $ZIP_FOLDER$FastPD_FILENAME -d $FastPD_SOURCE_FOLDER
+unzip -juqn "$ZIP_FOLDER$FastPD_FILENAME" "src/block.h" -d "$FastPD_SOURCE_FOLDER" &&
+unzip -juqn "$ZIP_FOLDER$FastPD_FILENAME" "src/Fast_PD.h" -d "$FastPD_SOURCE_FOLDER" &&
+unzip -juqn "$ZIP_FOLDER$FastPD_FILENAME" "src/graph.h" -d "$FastPD_SOURCE_FOLDER"
 if [ "$?" = "0" ]
 then :
 else
