@@ -50,7 +50,8 @@ fi
 echo "Extracting files from $FastPD_FILENAME"
 unzip -juqn "$ZIP_FOLDER$FastPD_FILENAME" "src/block.h" -d "$FastPD_SOURCE_FOLDER" &&
 unzip -juqn "$ZIP_FOLDER$FastPD_FILENAME" "src/Fast_PD.h" -d "$FastPD_SOURCE_FOLDER" &&
-unzip -juqn "$ZIP_FOLDER$FastPD_FILENAME" "src/graph.h" -d "$FastPD_SOURCE_FOLDER"
+unzip -juqn "$ZIP_FOLDER$FastPD_FILENAME" "src/graph.h" -d "$FastPD_SOURCE_FOLDER" &&
+dos2unix -q "$FastPD_SOURCE_FOLDER/block.h" "$FastPD_SOURCE_FOLDER/Fast_PD.h" "$FastPD_SOURCE_FOLDER/graph.h"
 if [ "$?" = "0" ]
 then :
 else
