@@ -165,10 +165,6 @@ if(WITH_HDF5)
       target_link_libraries(opengm external-library-gco)
     endif(WITH_GCO)
     
-    if(WITH_FASTPD)
-      target_link_libraries(opengm external-library-fastpd) 
-    endif(WITH_FASTPD)
-    
     if(WITH_GRANTE)
         target_link_libraries(opengm external-library-grante)
     endif(WITH_GRANTE)

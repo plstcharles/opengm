@@ -109,11 +109,6 @@ if(WITH_TRWS)
    target_link_libraries(_inference external-library-trws-shared)
 endif()
 
-
-if(WITH_FASTPD)
-   target_link_libraries(_inference external-library-fastpd-shared)
-endif()
-
 if(WITH_AD3)
    target_link_libraries(_inference external-library-ad3-shared )
 endif()
