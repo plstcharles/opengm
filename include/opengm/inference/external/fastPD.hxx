@@ -32,6 +32,7 @@ namespace opengm {
          typedef visitors::VerboseVisitor<FastPD<GM> > VerboseVisitorType;
          typedef visitors::EmptyVisitor<FastPD<GM> >   EmptyVisitorType;
          typedef visitors::TimingVisitor<FastPD<GM> >  TimingVisitorType;
+         typedef fastPDLib::CV_Fast_PD<ValueType,LabelType> FastPDInf;
 
         template<class _GM>
         struct RebindGm{
@@ -54,7 +55,7 @@ namespace opengm {
             template<class P>
             Parameter(const P & p)
             : numberOfIterations_(p.numberOfIterations_){
-                
+
             }
          };
          // construction
@@ -78,15 +79,15 @@ namespace opengm {
       protected:
          const GraphicalModelType& gm_;
          Parameter parameter_;
-         fastPDLib::CV_Fast_PD* pdInference_;
+         FastPDInf* pdInference_;
          ValueType value_;
          ValueType lowerBound_;
 
-         fastPDLib::CV_Fast_PD::Real* labelCosts_;
+         ValueType* labelCosts_;
          int numPairs_;
          int* pairs_;
-         fastPDLib::CV_Fast_PD::Real* distance_;
-         fastPDLib::CV_Fast_PD::Real* weights_;
+         ValueType* distance_;
+         ValueType* weights_;
 
          bool sameNumberOfLabels() const;
          void setLabelCosts();
@@ -110,20 +111,20 @@ namespace opengm {
          setDistance();
          setWeights();
 
-         if(sameEnergyTable()==false){ 
+         if(sameEnergyTable()==false){
               throw std::runtime_error("Error: Tables are not proportional");
          }
 
-         pdInference_ = new fastPDLib::CV_Fast_PD(
-               gm_.numberOfVariables(),
-               gm_.numberOfLabels(0),
-               labelCosts_,
-               numPairs_,
-               pairs_,
-               distance_,
-               parameter_.numberOfIterations_,
-               weights_
-               );
+         pdInference_ = new FastPDInf(
+            gm_.numberOfVariables(),
+            gm_.numberOfLabels(0),
+            labelCosts_,
+            numPairs_,
+            pairs_,
+            distance_,
+            parameter_.numberOfIterations_,
+            weights_
+         );
 
          // set initial value and lower bound
          AccumulationType::neutral(value_);
@@ -274,7 +275,7 @@ namespace opengm {
 
       template<class GM>
       inline void FastPD<GM>::setLabelCosts() {
-         labelCosts_ = new fastPDLib::CV_Fast_PD::Real[gm_.numberOfVariables() * gm_.numberOfLabels(0)];
+         labelCosts_ = new ValueType[gm_.numberOfVariables() * gm_.numberOfLabels(0)];
          for(IndexType i = 0; i < gm_.numberOfVariables() * gm_.numberOfLabels(0); i++) {
             labelCosts_[i] = 0;
          }
@@ -315,7 +316,7 @@ namespace opengm {
 
       template<class GM>
       inline void FastPD<GM>::setDistance() {
-         distance_ = new fastPDLib::CV_Fast_PD::Real[gm_.numberOfLabels(0) * gm_.numberOfLabels(0)];
+         distance_ = new ValueType[gm_.numberOfLabels(0) * gm_.numberOfLabels(0)];
          for(IndexType k = 0; k < gm_.numberOfLabels(0); k++) {
             for(IndexType l = 0; l < gm_.numberOfLabels(0); l++) {
                distance_[(l * gm_.numberOfLabels(0)) + k] = 0;
@@ -336,7 +337,7 @@ namespace opengm {
 
       template<class GM>
       inline void FastPD<GM>::setWeights() {
-         weights_ = new fastPDLib::CV_Fast_PD::Real[numPairs_];
+         weights_ = new ValueType[numPairs_];
          int currentPair = 0;
          for(IndexType i = 0; i < gm_.numberOfFactors(); i++) {
             if(gm_.numberOfVariables(i) == 2) {
@@ -348,7 +349,7 @@ namespace opengm {
                      IndexType index[] = {k, l};
                      if((gm_[i](index) != 0) && (distance_[(l * gm_.numberOfLabels(0)) + k] != 0)) {
                         double currentWeight = static_cast<double>(gm_[i](index)) / static_cast<double>(distance_[(l * gm_.numberOfLabels(0)) + k]);
-                        weights_[currentPair] = static_cast<fastPDLib::CV_Fast_PD::Real>(currentWeight);
+                        weights_[currentPair] = static_cast<ValueType>(currentWeight);
                         if(fabs(currentWeight - static_cast<double>(weights_[currentPair])) > OPENGM_FLOAT_TOL) {
                            throw(RuntimeError("Function not supported"));
                         }
@@ -403,7 +404,7 @@ namespace opengm {
           for (IndexType factorId=0;factorId<gm_.numberOfFactors();++factorId)
               if (gm_[factorId].numberOfVariables()==2) ++pwNum;
 
-          const fastPDLib::CV_Fast_PD::Real* y=pdInference_->_y;
+          const ValueType* y = pdInference_->_y;
 
           IndexType pwId=0;
           for (IndexType factorId=0;factorId<gm_.numberOfFactors();++factorId)

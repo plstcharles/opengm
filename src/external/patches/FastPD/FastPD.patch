@@ -1,6 +1,6 @@
 diff -urwB FastPD_DemoVersion/block.h FastPD.src-patched/block.h
 --- FastPD_DemoVersion/block.h	2003-08-12 00:32:42.000000000 -0400
-+++ FastPD.src-patched/block.h	2017-08-14 16:08:17.954141000 -0400
++++ FastPD.src-patched/block.h	2017-08-14 17:12:02.000000000 -0400
 @@ -89,8 +89,8 @@
  	deallocated only when the destructor is called.
  */
@@ -70,8 +70,8 @@ diff -urwB FastPD_DemoVersion/block.h FastPD.src-patched/block.h
  
 diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
 --- FastPD_DemoVersion/Fast_PD.h	2009-02-24 16:10:46.000000000 -0500
-+++ FastPD.src-patched/Fast_PD.h	2017-08-11 20:43:26.000000000 -0400
-@@ -13,13 +13,24 @@
++++ FastPD.src-patched/Fast_PD.h	2017-08-14 18:08:26.185778000 -0400
+@@ -13,13 +13,26 @@
  #include <assert.h>
  #include <time.h>
  #include <string.h>
@@ -92,17 +92,104 @@ diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
 +	y += d; h0 += d; h1 -= d;
 +}
 +
-+inline bool NEW_LABEL(const Graph::node* n) {
++template<typename TNode>
++inline bool NEW_LABEL(const TNode* n) {
 +	return n->parent && !(n->is_sink);
 +}
 +
-+inline Graph::arc* REV(Graph::arc* a) {
++template<typename TArc>
++inline TArc* REV(TArc* a) {
 +	return a+1;
 +}
  
  //#############################################################################
  //#
-@@ -245,7 +256,7 @@
+@@ -32,11 +45,18 @@
+ // @author  Nikos Komodakis
+ //=============================================================================
+ //
++template<typename ValueType, typename LabelType>
+ class CV_Fast_PD
+ {
+ 	public:
+ 
+-		typedef Graph::Real Real;
++		typedef Graph_<ValueType,LabelType> Graph;
++		typedef typename Graph::Real Real;
++		typedef typename Graph::Label Label;
++		typedef typename Graph::node node;
++		typedef typename Graph::arc arc;
++		typedef typename Graph::flowtype flowtype;
++		static constexpr arc* TERMINAL = Graph::TERMINAL;
+ 
+ 		//
+ 		// NOTE: "lcosts" is modified by member functions of this class
+@@ -63,15 +83,15 @@
+ 			_time      =-1; 
+ 			_APF_change_time = -1;
+ 
+-			if ( _numlabels >= pow((float)256,(int)sizeof(Graph::Label)) ) 
++			if ( _numlabels >= pow((float)256,(int)sizeof(Label)) )
+ 			{
+-				printf( "\nChange Graph::Label type (it is too small to hold all labels)\n" );
++				printf( "\nChange label type (it is too small to hold all labels)\n" );
+ 				assert(0);
+ 			}
+ 				
+ 			try
+ 			{
+-				_children          = new Graph::node *[_numpoints];
++				_children          = new node*[_numpoints];
+ 				_source_nodes_tmp1 = new int[_numpoints]; 
+ 				_source_nodes_tmp2 = new int[_numpoints]; 
+ 			}
+@@ -87,8 +107,8 @@
+ 
+ 			try
+ 			{
+-				_all_nodes = new Graph::node[_numpoints*_numlabels];
+-				_all_arcs  = new Graph::arc[_numpairs*_numlabels<<1];
++				_all_nodes = new node[_numpoints*_numlabels];
++				_all_arcs  = new arc[_numpairs*_numlabels<<1];
+ 				_all_graphs = new Graph *[_numlabels];
+ 			}
+ 			catch(...)
+@@ -152,7 +172,7 @@
+ 			delete _all_nodes;
+ 			delete _all_arcs ;
+ 
+-			Graph::Label i;
++			Label i;
+ 			for( i = 0; i < _numlabels; i++ )
+ 				delete _all_graphs[i];
+ 			delete [] _all_graphs;
+@@ -214,13 +234,13 @@
+ 			printf( "Done\n" );
+ 		}
+ 
+-		void inner_iteration( Graph::Label label )
++		void inner_iteration( Label label )
+ 		{
+ 			int i;
+ 
+ 			Graph       *_graph =  _all_graphs[label];
+-			Graph::node *_nodes = &_all_nodes [_numpoints*label];
+-			Graph::arc  *_arcs  = &_all_arcs  [(_numpairs*label)<<1];
++			node  *_nodes = &_all_nodes [_numpoints*label];
++			arc   *_arcs  = &_all_arcs  [(_numpairs*label)<<1];
+ 			Real        *_cur_y = &_y         [_numpairs*label];
+ 
+ 			_time++;
+@@ -232,7 +252,7 @@
+ 			// Update balance and height variables
+ 			//
+ 			Arc_info  *einfo = _einfo;
+-			Graph::arc *arcs = _arcs;
++			arc *arcs = _arcs;
+ 			Real *cur_y = &_y[_numpairs*label];
+ 			Real *cur_h = &_h[_numpoints*label];
+ 			for( i = 0; i < _numpairs; i++, einfo++, arcs+=2, cur_y++ )
+@@ -245,7 +265,7 @@
  					Real delta2;
  					if ( delta1 < 0 || (delta2=delta-delta1) < 0 ) 
  					{
@@ -111,97 +198,236 @@ diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  						arcs->cap = arcs->r_cap = 0;
  						if ( delta < 0 ) // This may happen only for non-metric distances
  						{
-@@ -280,7 +291,7 @@
+@@ -270,7 +290,7 @@
+ 
+ 			Real total_cap = 0;
+ 			Node_info *pinfo = _pinfo;
+-			Graph::node *nodes = _nodes;
++			node *nodes = _nodes;
+ 			for( i = 0; i < _numpoints; i++, pinfo++, nodes++, cur_h++ )
+ 			{
+ 				Real delta = pinfo->height - (*cur_h);
+@@ -280,7 +300,7 @@
  			
  			// Run max-flow and update the primal variables
  			//
 -			Graph::flowtype max_flow = _graph -> run_maxflow(1);
-+			Graph::flowtype max_flow = _graph -> maxflow<true>(1);
++			flowtype max_flow = _graph->template maxflow<true>(1);
  			_APF -= (total_cap - max_flow);
  			if ( total_cap > max_flow )
  				_APF_change_time = _time;
-@@ -433,7 +444,7 @@
+@@ -322,8 +342,8 @@
+ 									Pair_info *pair = &_pair_info[-pid];
+ 									if ( !(_nodes[pair->i0].parent) || _nodes[pair->i0].is_sink)
+ 									{
+-										Graph::Label l0 = _pinfo[pair->i0].label;
+-										Graph::Label l1 =  pinfo->label;
++										Label l0 = _pinfo[pair->i0].label;
++										Label l1 =  pinfo->label;
+ 										Real delta = _wcosts[-pid]*(DIST(l0,label)+DIST(label,l1)-DIST(l0,l1));
+ 										//assert( l0 != label ); assert( delta<0 );
+ 										if ( delta < 0 )
+@@ -349,15 +369,15 @@
+ 			}
+ 		}
+ 
+-		void inner_iteration_adapted( Graph::Label label )
++		void inner_iteration_adapted( Label label )
+ 		{
+ 			if ( _iter > 1 )
+ 				return track_source_linked_nodes( label );
+ 
+ 			int i;
+ 			Graph       *_graph =  _all_graphs[label];
+-			Graph::node *_nodes = &_all_nodes [_numpoints*label];
+-			Graph::arc  *_arcs  = &_all_arcs  [(_numpairs*label)<<1];
++			node  *_nodes = &_all_nodes [_numpoints*label];
++			arc   *_arcs  = &_all_arcs  [(_numpairs*label)<<1];
+ 			Real        *_cur_y = &_y         [_numpairs*label];
+ 			Real        *_cur_h = &_h         [_numpoints*label];
+ 
+@@ -376,7 +396,7 @@
+ 				int i1 = _pairs[(i<<1)+1];
+ 				if ( _pinfo[i0].time >= dt || _pinfo[i1].time >= dt )
+ 				{
+-					Graph::arc *arc0 = &_arcs[i<<1];
++					arc *arc0 = &_arcs[i<<1];
+ 
+ 					if ( _cur_h[i0] != _pinfo[i0].height )
+ 					{
+@@ -395,7 +415,7 @@
+ 					int l0,l1;
+ 					if ( (l0=_pinfo[i0].label) != label && (l1=_pinfo[i1].label) != label )
+ 					{
+-						Graph::arc *arc1 = &_all_arcs[(_numpairs*l1+i)<<1];
++						arc *arc1 = &_all_arcs[(_numpairs*l1+i)<<1];
+ 						Real y_pq =   _cur_y[i] + arc0->cap - arc0->r_cap ;
+ 						Real y_qp = -(_y[_numpairs*l1+i] + arc1->cap - arc1->r_cap);
+ 						Real delta  = _wcosts[i]*(DIST(label,l1)+DIST(l0,label)-DIST(l0,l1));
+@@ -433,7 +453,7 @@
  			// Run max-flow and update the primal variables
  			//
  			assert( _iter <= 1 );
 -			Graph::flowtype max_flow = _graph -> apply_maxflow(1);
-+			Graph::flowtype max_flow = _graph -> maxflow<false>(1);
++			flowtype max_flow = _graph->template maxflow<false>(1);
  
  			double prev_APF = _APF;
  			for( i = 0; i < _numpoints; i++ )
-@@ -538,7 +549,7 @@
- 					if ( _nodes[i].tr_cap )
+@@ -455,8 +475,8 @@
+ 								Pair_info *pair = &_pair_info[-pid];
+ 								if ( !(_nodes[pair->i0].parent) || _nodes[pair->i0].is_sink)
+ 								{
+-									Graph::Label l0 = _pinfo[pair->i0].label;
+-									Graph::Label l1 =  pinfo->label;
++									Label l0 = _pinfo[pair->i0].label;
++									Label l1 =  pinfo->label;
+ 									Real delta = _wcosts[-pid]*(DIST(l0,label)+DIST(label,l1)-DIST(l0,l1));
+ 									//printf( "pid = %d, delta = %d\n", -pid, delta );
+ 									//assert( l0 != label ); assert( delta<0 );
+@@ -493,7 +513,7 @@
+ 				_APF_change_time = _time;
+ 		}
+ 
+-		void track_source_linked_nodes( Graph::Label label )
++		void track_source_linked_nodes( Label label )
+ 		{
+ 			int i;
+ 			assert( _iter > 1 );
+@@ -501,8 +521,8 @@
+ 			//
+ 			//
+ 			Graph       *_graph =  _all_graphs[label];
+-			Graph::node *_nodes = &_all_nodes [_numpoints*label];
+-			Graph::arc  *_arcs  = &_all_arcs  [(_numpairs*label)<<1];
++			node  *_nodes = &_all_nodes [_numpoints*label];
++			arc   *_arcs  = &_all_arcs  [(_numpairs*label)<<1];
+ 			Real        *_cur_y = &_y         [_numpairs*label];
+ 			Real        *_cur_h = &_h         [_numpoints*label];
+ 
+@@ -606,10 +626,10 @@
+ 					pair->time = _time;
+ 
+ 					int l0,l1;
+-					Graph::arc *arc0 = &_arcs[pid<<1];
++					arc *arc0 = &_arcs[pid<<1];
+ 					if ( (l0=n0->label) != label && (l1=n1->label) != label )
  					{
- 						//assert(  _nodes[i].tr_cap < 0 );
--						_nodes[i].parent  = TERMINAL;
-+						_nodes[i].parent  = FAST_PD_TERMINAL;
- 						_nodes[i].is_sink = 1;
- 						_nodes[i].DIST = 1;
+-						Graph::arc *arc1 = &_all_arcs[(_numpairs*l1+pid)<<1];
++						arc *arc1 = &_all_arcs[(_numpairs*l1+pid)<<1];
+ 						Real y_pq =   _cur_y[pid] + arc0->cap - arc0->r_cap ;
+ 						Real y_qp = -(_y[_numpairs*l1+pid] + arc1->cap - arc1->r_cap);
+ 						Real delta  = _wcosts[pid]*(DIST(label,l1)+DIST(l0,label)-DIST(l0,l1));
+@@ -649,7 +669,7 @@
  					}
-@@ -653,7 +664,7 @@
+ 				}
+ 
+-				Graph::node *nd = &_nodes[i];
++				node *nd = &_nodes[i];
  				if ( nd->tr_cap > 0 )
  				{
  					nd -> is_sink = 0;
--					nd -> parent = TERMINAL;
-+					nd -> parent = FAST_PD_TERMINAL;
- 					nd -> DIST = 1;
+@@ -675,7 +695,7 @@
  
- 					_graph->set_active(nd);
-@@ -664,7 +675,7 @@
- 				else if (nd->tr_cap < 0)
- 				{
- 					nd -> is_sink = 1;
--					nd -> parent = TERMINAL;
-+					nd -> parent = FAST_PD_TERMINAL;
- 					nd -> DIST = 1;
- 				}
- 				else nd -> parent = NULL;
-@@ -679,7 +690,7 @@
+ 			for( i = source_nodes_start2; i >= 0; )
+ 			{
+-				Graph::node *nd = &_nodes[i];
++				node *nd = &_nodes[i];
  				if ( nd->tr_cap > 0 )
  				{
  					nd -> is_sink = 0;
--					nd -> parent = TERMINAL;
-+					nd -> parent = FAST_PD_TERMINAL;
- 					nd -> DIST = 1;
- 
- 					_graph->set_active(nd);
-@@ -690,7 +701,7 @@
- 				else if (nd->tr_cap < 0)
- 				{
- 					nd -> is_sink = 1;
--					nd -> parent = TERMINAL;
-+					nd -> parent = FAST_PD_TERMINAL;
- 					nd -> DIST = 1;
- 				}
- 				else nd -> parent = NULL;
-@@ -703,7 +714,7 @@
+@@ -703,7 +723,7 @@
  
  			// Run max-flow 
  			//
 -			Graph::flowtype max_flow = _graph -> apply_maxflow(0);
-+			Graph::flowtype max_flow = _graph -> maxflow<false>(0);
++			flowtype max_flow = _graph->template maxflow<false>(0);
  
  			// Traverse source tree to update the primal variables 
  			//
-@@ -712,7 +723,7 @@
+@@ -711,7 +731,7 @@
+ 			int num_children = 0;
  			for( i = source_nodes_start1; i >= 0; )
  			{
- 				Graph::node *n = &_nodes[i];
--				if ( n->parent == TERMINAL )
-+				if ( n->parent == FAST_PD_TERMINAL )
+-				Graph::node *n = &_nodes[i];
++				node *n = &_nodes[i];
+ 				if ( n->parent == TERMINAL )
  				{
  					Node_info *pinfo = &_pinfo[i];
+@@ -730,8 +750,8 @@
+ 								Pair_info *pair = &_pair_info[-pid];
+ 								if ( !(_nodes[pair->i0].parent) || _nodes[pair->i0].is_sink)
+ 								{
+-									Graph::Label l0 = _pinfo[pair->i0].label;
+-									Graph::Label l1 =  pinfo->label;
++									Label l0 = _pinfo[pair->i0].label;
++									Label l1 =  pinfo->label;
+ 									Real delta = _wcosts[-pid]*(DIST(l0,label)+DIST(label,l1)-DIST(l0,l1));
+ 									//assert( l0 != label ); assert( delta<0 );
+ 									
+@@ -762,10 +782,10 @@
+ 						_active_list = i;
+ 					}
  
-@@ -779,7 +790,7 @@
+-					Graph::arc *a;
++					arc *a;
+ 					for ( a=n->first; a; a=a->next )
+ 					{
+-						Graph::node *ch = a->head;
++						node *ch = a->head;
+ 						if ( ch->parent == a->sister )
+ 							_children[num_children++] = ch;
+ 					}
+@@ -778,8 +798,8 @@
+ 
  			for( i = 0; i < num_children; i++ )
  			{
- 				Graph::node *n = _children[i];
+-				Graph::node *n = _children[i];
 -				unsigned int id  = ((unsigned int)n - (unsigned int)_nodes) / sizeof(Graph::node); 
-+				uintptr_t  id  = (reinterpret_cast<uintptr_t >(n) - reinterpret_cast<uintptr_t >(_nodes)) / sizeof(Graph::node);
++				node *n = _children[i];
++				uintptr_t  id  = (reinterpret_cast<uintptr_t >(n) - reinterpret_cast<uintptr_t >(_nodes)) / sizeof(node);
  				Node_info *pinfo = &_pinfo[id];
  
  				// If necessary, repair "loads" in case of non-metric
-@@ -942,10 +953,7 @@
+@@ -796,8 +816,8 @@
+ 							Pair_info *pair = &_pair_info[-pid];
+ 							if ( !(_nodes[pair->i0].parent) || _nodes[pair->i0].is_sink)
+ 							{
+-								Graph::Label l0 = _pinfo[pair->i0].label;
+-								Graph::Label l1 =  pinfo->label;
++								Label l0 = _pinfo[pair->i0].label;
++								Label l1 =  pinfo->label;
+ 								Real delta = _wcosts[-pid]*(DIST(l0,label)+DIST(label,l1)-DIST(l0,l1));
+ 								//assert( l0 != label ); assert( delta<0 );
+ 
+@@ -828,10 +848,10 @@
+ 					_active_list = id;
+ 				}
+ 
+-				Graph::arc *a;
++				arc *a;
+ 				for ( a=n->first; a; a=a->next )
+ 				{
+-					Graph::node *ch = a->head;
++					node *ch = a->head;
+ 					if ( ch->parent == a->sister )
+ 						_children[num_children++] = ch;
+ 				}
+@@ -856,12 +876,12 @@
+ 				clock_t start = clock();
+ 				if ( !iter )
+ 				{
+-					for( Graph::Label l = 0; l < _numlabels; l++ )
++					for( Label l = 0; l < _numlabels; l++ )
+ 						inner_iteration( l );
+ 				}
+ 				else 
+ 				{
+-					for( Graph::Label l = 0; l < _numlabels; l++ )
++					for( Label l = 0; l < _numlabels; l++ )
+ 						inner_iteration_adapted( l );
+ 				}
+ 				clock_t finish = clock();
+@@ -942,19 +962,16 @@
  			}
  		}
  
@@ -213,16 +439,29 @@ diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  		{
  			printf("%s",msg);
  		}
-@@ -954,7 +962,7 @@
+ 
+ 		struct Node_info
  		{
- 			Graph::Label label; // current label
+-			Graph::Label label; // current label
++			Label label; // current label
  			Real height; // active height of node
 -			TIME time; // timestamp of change
 +			short time; // timestamp of change
   			int next;    
  			int prev;
  			int *pairs; // neighboring edges
-@@ -985,7 +993,7 @@
+@@ -969,8 +986,8 @@
+ 		Real         *_y; // balance variables
+ 		Real         *_dist; // distance function for pairwise potential
+         int          *_pairs;
+-		Graph::node  *_all_nodes; // Nodes and edges 
+-		Graph::arc   *_all_arcs;  // of max-flow graphs
++		node         *_all_nodes; // Nodes and edges
++		arc          *_all_arcs;  // of max-flow graphs
+ 		Graph       **_all_graphs;
+ 		int          *_source_nodes_tmp1; // Auxiliary lists for keeping
+ 		int          *_source_nodes_tmp2; // track of source-linked nodes
+@@ -985,7 +1002,7 @@
  		struct Pair_info
  		{
  			int i0, i1;
@@ -231,8 +470,12 @@ diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  		};
  
  		struct Arc_info
-@@ -1003,12 +1011,19 @@
- 		Graph::node **_children;
+@@ -1000,15 +1017,22 @@
+ 		Pair_info    *_pair_info;
+ 		int           _active_list;
+ 		int           _APF_change_time;
+-		Graph::node **_children;
++		node        **_children;
  		int          *_pairs_arr;
  
 +		template<typename TLabel0, typename TLabel1>
@@ -253,8 +496,8 @@ diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  //#############################################################################
 diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 --- FastPD_DemoVersion/graph.h	2009-02-24 16:10:08.000000000 -0500
-+++ FastPD.src-patched/graph.h	2017-08-14 16:14:41.324044000 -0400
-@@ -74,38 +74,34 @@
++++ FastPD.src-patched/graph.h	2017-08-14 17:47:57.813526000 -0400
+@@ -74,38 +74,28 @@
  	///////////////////////////////////////////////////
  */
  
@@ -277,22 +520,21 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 -#define NODE_BLOCK_SIZE 512
 -#define ARC_BLOCK_SIZE 1024
 -#define NODEPTR_BLOCK_SIZE 128
-+const unsigned int NODE_BLOCK_SIZE = 512;
-+const unsigned int ARC_BLOCK_SIZE = 1024;
-+const unsigned int NODEPTR_BLOCK_SIZE = 128;
- 
- /*
- 	special constants for node->parent
- */
+-
+-/*
+-	special constants for node->parent
+-*/
 -#define TERMINAL ( (Graph::arc *) 1 )		/* to terminal */
 -#define ORPHAN   ( (Graph::arc *) 2 )		/* orphan */
 -
 -#define INFINITE_D 1000000000		/* infinite distance to the terminal */
-+#define FAST_PD_TERMINAL ( (Graph::arc *) 1 )		/* to terminal */
-+#define FAST_PD_ORPHAN   ( (Graph::arc *) 2 )		/* orphan */
-+#define FAST_PD_INFINITE_D 1000000000		/* infinite distance to the terminal */
++const unsigned int NODE_BLOCK_SIZE = 512;
++const unsigned int ARC_BLOCK_SIZE = 1024;
++const unsigned int NODEPTR_BLOCK_SIZE = 128;
  
- class Graph
+-class Graph
++template<typename ValueType, typename LabelType>
++class Graph_
  {
  public:
  
@@ -301,16 +543,16 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 -#else
 -	typedef unsigned char Label;
 -#endif
-+	typedef FASTPDLABELVALUE Label;
++	typedef LabelType Label;
  
  	typedef enum
  	{
-@@ -115,42 +111,81 @@
+@@ -115,42 +105,81 @@
  
  	/* Type of edge weights.
  	   Can be changed to char, int, float, double, ... */
 -	typedef int Real;
-+	typedef FASTPDENERGYVALUE Real;
++	typedef ValueType Real;
  	typedef Real captype;
  
  	/* Type of total flow */
@@ -399,7 +641,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  
  /***********************************************************************/
  /***********************************************************************/
-@@ -171,12 +205,9 @@
+@@ -171,12 +200,9 @@
  		int				TS;			/* timestamp showing when DIST was computed */
  		int				DIST;		/* distance to the terminal */
  		short			is_sink;	/* flag showing whether the node is in the source or in the sink tree */
@@ -413,7 +655,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  	} node;
  
  	/* arc structure */
-@@ -185,10 +216,8 @@
+@@ -185,10 +211,8 @@
  		node_st			*head;		/* node q, i.e. node the arc points to */
  		arc_st			*next;		/* next arc with the same originating node */
  		arc_st			*sister;	/* arc qp, i.e. reverse arc */
@@ -425,7 +667,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  	} arc;
  
  	/* 'pointer to node' structure */
-@@ -202,7 +231,7 @@
+@@ -202,7 +226,7 @@
  	Block<arc>			*arc_block;
  	DBlock<nodeptr>		*nodeptr_block;
  
@@ -434,12 +676,12 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  										   with a corresponding error message
  										   (or exit(1) is called if it's NULL) */
  
-@@ -212,9 +241,16 @@
+@@ -212,9 +236,16 @@
  	   function which will be called if an error occurs;
  	   an error message is passed to this function. If this
  	   argument is omitted, exit(1) will be called. */
 -	Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(char *) = NULL);
-+	inline Graph(node *nodes, arc *arcs, int num_nodes, void (*err_function)(const char *) = NULL)
++	inline Graph_(node *nodes, arc *arcs, int num_nodes, void (*err_function)(const char *) = NULL)
 +	{
 +		error_function = err_function;
 +		_nodes = nodes;
@@ -453,7 +695,17 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  	{
  		flow = 0;
  	}
-@@ -233,9 +269,117 @@
+@@ -223,6 +254,9 @@
+ 	node               *_nodes;
+ 	int                 _num_nodes;
+ 
++	static constexpr arc* TERMINAL = (arc*)1;
++	static constexpr arc* ORPHAN = (arc*)2;
++
+ //private:
+ 
+ /***********************************************************************/
+@@ -233,9 +267,117 @@
  
  /***********************************************************************/
  
@@ -574,7 +826,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  
  	/*
  	Functions for processing active list.
-@@ -249,7 +393,7 @@
+@@ -249,7 +391,7 @@
  	is empty, it is replaced by the second queue
  	(and the second queue becomes empty).
  	*/
@@ -583,7 +835,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
  	{
  		if (!i->next)
  		{
-@@ -260,12 +404,241 @@
+@@ -260,12 +402,242 @@
  			i -> next = i;
  		}
  	}
@@ -635,7 +887,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +			{
 +				/* i is connected to the source */
 +				i -> is_sink = 0;
-+				i -> parent = FAST_PD_TERMINAL;
++				i -> parent = TERMINAL;
 +				set_active(i);
 +				i -> TS = 0;
 +				i -> DIST = 1;
@@ -644,7 +896,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +			{
 +				/* i is connected to the sink */
 +				i -> is_sink = 1;
-+				i -> parent = FAST_PD_TERMINAL;
++				i -> parent = TERMINAL;
 +				if(bORIG)
 +					set_active(i);
 +				i -> TS = 0;
@@ -661,7 +913,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +	inline void set_orphan_front(node *i)
 +	{
 +		nodeptr *np;
-+		i -> parent = FAST_PD_ORPHAN;
++		i -> parent = ORPHAN;
 +		np = nodeptr_block -> New();
 +		np -> ptr = i;
 +		np -> next = orphan_first;
@@ -680,7 +932,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +		for (i=middle_arc->sister->head; ; i=a->head)
 +		{
 +			a = i -> parent;
-+			if (a == FAST_PD_TERMINAL) break;
++			if (a == TERMINAL) break;
 +			if (bottleneck > a->sister->r_cap) bottleneck = a -> sister -> r_cap;
 +		}
 +		if (bottleneck > i->tr_cap) bottleneck = i -> tr_cap;
@@ -688,7 +940,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +		for (i=middle_arc->head; ; i=a->head)
 +		{
 +			a = i -> parent;
-+			if (a == FAST_PD_TERMINAL) break;
++			if (a == TERMINAL) break;
 +			if (bottleneck > a->r_cap) bottleneck = a -> r_cap;
 +		}
 +		if (bottleneck > - i->tr_cap) bottleneck = - i -> tr_cap;
@@ -699,7 +951,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +		for (i=middle_arc->sister->head; ; i=a->head)
 +		{
 +			a = i -> parent;
-+			if (a == FAST_PD_TERMINAL) break;
++			if (a == TERMINAL) break;
 +			a -> r_cap += bottleneck;
 +			a -> sister -> r_cap -= bottleneck;
 +			if (!a->sister->r_cap)
@@ -718,7 +970,7 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +		for (i=middle_arc->head; ; i=a->head)
 +		{
 +			a = i -> parent;
-+			if (a == FAST_PD_TERMINAL) break;
++			if (a == TERMINAL) break;
 +			a -> sister -> r_cap += bottleneck;
 +			a -> r_cap -= bottleneck;
 +			if (!a->r_cap)
@@ -748,7 +1000,8 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +	{
 +		node *j;
 +		arc *a0, *a0_min = NULL, *a;
-+		int d, d_min = FAST_PD_INFINITE_D;
++		constexpr int d_max = 1000000000;
++		int d, d_min = d_max;
 +		/* trying to find a new parent */
 +		for (a0=i->first; a0; a0=a0->next)
 +		if (bSOURCE?(a0->sister->r_cap):(a0->r_cap))
@@ -767,16 +1020,16 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +					}
 +					a = j -> parent;
 +					d ++;
-+					if (a==FAST_PD_TERMINAL)
++					if (a==TERMINAL)
 +					{
 +						j -> TS = TIME;
 +						j -> DIST = 1;
 +						break;
 +					}
-+					if (a==FAST_PD_ORPHAN) { d = FAST_PD_INFINITE_D; break; }
++					if (a==ORPHAN) { d = d_max; break; }
 +					j = a -> head;
 +				}
-+				if (d<FAST_PD_INFINITE_D) /* j originates from the terminal - done */
++				if (d<d_max) /* j originates from the terminal - done */
 +				{
 +					if (d<d_min)
 +					{
@@ -809,11 +1062,11 @@ diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 +				if ((bSOURCE?(!j->is_sink):(j->is_sink)) && (a=j->parent))
 +				{
 +					if (bSOURCE?(a0->sister->r_cap):(a0->r_cap)) set_active(j);
-+					if (a!=FAST_PD_TERMINAL && a!=FAST_PD_ORPHAN && a->head==i)
++					if (a!=TERMINAL && a!=ORPHAN && a->head==i)
 +					{
 +						/* add j to the adoption list */
 +						nodeptr *np;
-+						j -> parent = FAST_PD_ORPHAN;
++						j -> parent = ORPHAN;
 +						np = nodeptr_block -> New();
 +						np -> ptr = j;
 +						if (orphan_last) orphan_last -> next = np;
