@@ -1,6 +1,6 @@
 diff -urwB FastPD_DemoVersion/block.h FastPD.src-patched/block.h
 --- FastPD_DemoVersion/block.h	2003-08-12 00:32:42.000000000 -0400
-+++ FastPD.src-patched/block.h	2017-08-14 17:12:02.000000000 -0400
++++ FastPD.src-patched/block.h	2017-08-14 18:39:31.695204112 -0400
 @@ -89,8 +89,8 @@
  	deallocated only when the destructor is called.
  */
@@ -70,7 +70,7 @@ diff -urwB FastPD_DemoVersion/block.h FastPD.src-patched/block.h
  
 diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
 --- FastPD_DemoVersion/Fast_PD.h	2009-02-24 16:10:46.000000000 -0500
-+++ FastPD.src-patched/Fast_PD.h	2017-08-14 18:08:26.185778000 -0400
++++ FastPD.src-patched/Fast_PD.h	2017-08-14 18:49:20.889131310 -0400
 @@ -13,13 +13,26 @@
  #include <assert.h>
  #include <time.h>
@@ -154,6 +154,15 @@ diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  				_all_graphs = new Graph *[_numlabels];
  			}
  			catch(...)
+@@ -138,7 +158,7 @@
+ 			float t = (float) ((double)(finish - start) / CLOCKS_PER_SEC);
+ 			printf( "Done\n" );
+ 
+-			if ( t >= MAX((double)(_numpoints*MAX(_numlabels,5))/(double)(110000*16),1) )
++			if ( t >= std::max((double)(_numpoints*std::max(_numlabels,5))/(double)(110000*16),1.0) )
+ 			{
+ 				printf( "========\n" );
+ 				printf( "WARNING: algorithm may be very slow due to swapping from disk\n" ); 
 @@ -152,7 +172,7 @@
  			delete _all_nodes;
  			delete _all_arcs ;
@@ -496,7 +505,7 @@ diff -urwB FastPD_DemoVersion/Fast_PD.h FastPD.src-patched/Fast_PD.h
  //#############################################################################
 diff -urwB FastPD_DemoVersion/graph.h FastPD.src-patched/graph.h
 --- FastPD_DemoVersion/graph.h	2009-02-24 16:10:08.000000000 -0500
-+++ FastPD.src-patched/graph.h	2017-08-14 17:47:57.813526000 -0400
++++ FastPD.src-patched/graph.h	2017-08-14 18:39:31.696204106 -0400
 @@ -74,38 +74,28 @@
  	///////////////////////////////////////////////////
  */
