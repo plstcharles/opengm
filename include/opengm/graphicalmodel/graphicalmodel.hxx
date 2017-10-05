@@ -129,9 +129,10 @@ public:
       FUNCTION_TYPE& getFunction(const FunctionIdentifier&);
    template<class ITERATOR>
       IndexType addFactor(const FunctionIdentifier&, ITERATOR, ITERATOR);
-
    template<class ITERATOR>
       IndexType addFactorNonFinalized(const FunctionIdentifier&, ITERATOR, ITERATOR);
+   template<class ITERATOR>
+      void setFactorVariables(const IndexType factorIndex, ITERATOR begin, ITERATOR end);
 
    void finalize();
 
@@ -748,7 +749,33 @@ GraphicalModel<T, OPERATOR, FUNCTION_TYPE_LIST, SPACE>::addFactorNonFinalized
    //this->factors_[factorIndex].testInvariant();
    return factorIndex;
 }
-   
+
+/// \brief modify the variable indices of a factor already in the graphical model (order must stay constant)
+/// \param factorIndex identifier of the factor to modify
+/// \param begin iterator to the beginning of a sequence of variable indices
+/// \param end iterator to the end of a sequence of variable indices
+///
+///  IF FACTORS ARE MODIFIED WITH THIS FUNCTION , gm.finalize() needs to be called
+///
+template<class T, class OPERATOR, class FUNCTION_TYPE_LIST, class SPACE>
+template<class ITERATOR>
+void GraphicalModel<T, OPERATOR, FUNCTION_TYPE_LIST, SPACE>::setFactorVariables
+(
+   const IndexType factorIndex,
+   ITERATOR begin,
+   ITERATOR end
+) {
+   OPENGM_ASSERT(factorIndex < numberOfFactors());
+   FactorType& factor = factors_[factorIndex];
+   OPENGM_ASSERT(std::distance(begin,end) == factor.numberOfVariables());
+   std::copy(begin,end,factor.vis_.begin());
+   for(size_t i=0; i<factor.numberOfVariables();++i) {
+      if(i!=0)
+         OPENGM_CHECK_OP(factor.variableIndex(i-1),<,factor.variableIndex(i),"variable indices of a factor must be sorted");
+      OPENGM_CHECK_OP(factor.variableIndex(i),<,this->numberOfVariables(),"variable indices of a factor must smaller than gm.numberOfVariables()");
+   }
+}
+
 
 template<class T, class OPERATOR, class FUNCTION_TYPE_LIST, class SPACE>
 void 
