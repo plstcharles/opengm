@@ -8,31 +8,28 @@ class VectorView{
 
 public:
 
-
-
 	typedef VECTOR VectorType;
 	typedef INDEX_TYPE IndexType;
 	typedef typename VectorType::value_type ValueType;
-
 	typedef typename VectorType::const_iterator const_iterator;
 	typedef typename VectorType::iterator iterator;
 
-	VectorView(){}
-
+	VectorView() :
+		vectorPtr_(nullptr),
+	    start_(0),
+		size_(0) {}
 
 	VectorView(
-		const VectorType & vector
+		VectorType & vector
 	) :	vectorPtr_(&vector),
 		start_(0),
 		size_(0){
-
 	}
 
-
 	VectorView(
-		const VectorType & vector,
-		const IndexType start,
-		const IndexType size
+		VectorType & vector,
+		IndexType start,
+		IndexType size
 	) :	vectorPtr_(&vector),
 		start_(start),
 		size_(size){
@@ -40,22 +37,20 @@ public:
 	}
 
 	void assign(
-		const VectorType & vector,
-		const IndexType start,
-		const IndexType size
+		VectorType & vector,
+		IndexType start,
+		IndexType size
 	){
 		vectorPtr_=&vector;
 		start_=start;
 		size_=size;
 	}
 
-
 	void assignPtr(
-		const VectorType & vector
+		VectorType& vector
 	){
 		vectorPtr_=&vector;
 	}
-
 
 	iterator begin(){
 		return vectorPtr_->begin()+start_;
@@ -71,7 +66,6 @@ public:
 		return vectorPtr_->begin()+start_+size_;
 	}
 
-
 	const IndexType size()const{
 		return size_;
 	}
@@ -84,7 +78,7 @@ public:
 
 
 private:
-	const VectorType * vectorPtr_;
+	VectorType * vectorPtr_;
 	IndexType start_;
 	IndexType size_;
 
